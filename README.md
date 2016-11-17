@@ -1,7 +1,8 @@
 ﻿# postmaster-general
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/darklordzw/postmaster-general/blob/master/LICENSE.md)
 
-Simple Node.js library for microservice communication over [AMQP][1] using [Seneca.js][2] and [seneca-amqp-transport][3].
+Simple Node.js library, based on [seneca-amqp-transport][3], for microservice communication over [AMQP][1] using [Seneca.js][2].
+Supports both "fire-and-forget" and RPC calling patterns.
 
 ## Install
 
@@ -16,14 +17,13 @@ The following snippets showcase the most basic usage examples.
 
 ```js
 var PostmasterGeneral = require('postmaster-general');
-var options = { queue: 'app.js.queue', pins: ['action:get_time', 'level:*', 'proc:status'] };
+var options = { queue: 'app.js.queue', pins: ['action:get_greeting'] };
 var postmaster = new PostmasterGeneral(options);
 
-postmaster.addRecipient('action:get_time', function (message, done) {
-    console.log(`[action:get_time] Action ${message.id} received`);
+postmaster.addRecipient('action:get_greeting', function (message, done) {
+    console.log('[action:get_greeting] received');
     return done(null, {
-        pid: process.pid,
-        time: 'Current time is ' + Date.now() + 'ms'
+        greeting: 'Hello, ' + message.name
     });
 });
 
@@ -34,22 +34,22 @@ postmaster.listen();
 
 ```js
 var PostmasterGeneral = require('postmaster-general');
-var options = { queue: 'app.js.queue', pins: ['action:get_time', 'level:*', 'proc:status'] };
+var options = { queue: 'app.js.queue', pins: ['action:get_greeting'] };
 var postmaster = new PostmasterGeneral(options);
 
 // fire-and-forget publish
-postmaster.send('action:get_time', {
-    id: Math.floor(Math.random() * 91) + 10,
+postmaster.send('action:get_greeting', {
+    name: 'Bob'
 });
 
 // publish with expected response.
-postmaster.send('action:get_time', {
-    id: Math.floor(Math.random() * 91) + 10
+postmaster.send('action:get_greeting', {
+    name: 'Steve'
 }, (err, res) => {
     if (err) {
         throw err;
     }
-    console.log(res);
+    console.log(res.greeting);
 });
 ```
 

@@ -1,22 +1,20 @@
 ﻿'use strict';
 
 var PostmasterGeneral = require('../postmaster-general');
-var options = require('../defaults');
+var options = { queue: 'app.js.queue', pins: ['action:get_greeting'] };
+var postmaster = new PostmasterGeneral(options);
 
-options.queue = 'app.js.queue';
-options.pins = ['action:get_time', 'level:*', 'proc:status'];
-
-var client = new PostmasterGeneral(options);
-
-client.send('action:get_time', {
-    id: Math.floor(Math.random() * 91) + 10,
+// fire-and-forget publish
+postmaster.send('action:get_greeting', {
+    name: 'Bob'
 });
 
-client.send('action:get_time', {
-    id: Math.floor(Math.random() * 91) + 10
+// publish with expected response.
+postmaster.send('action:get_greeting', {
+    name: 'Steve'
 }, (err, res) => {
     if (err) {
         throw err;
     }
-    console.log(res);
+    console.log(res.greeting);
 });
