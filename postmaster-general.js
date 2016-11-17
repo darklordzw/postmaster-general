@@ -1,48 +1,74 @@
 ﻿'use strict';
 /**
+ * A simple wrapper for the excellent "seneca-amqp-transport"
+ * plugin (https://github.com/senecajs/seneca-amqp-transport) that
+ * abstracts the Seneca implementations and adds "fire-and-forget"
+ * support for events.
+ *
  * @module postmaster-general
  */
+const Defaults = require('./defaults');
 const Seneca = require('seneca');
 const _ = require('lodash');
+
+function InvalidParameterException(message) {
+  this.message = message;
+  this.name = 'InvalidParameterException';
+}
+
+function AMQPListenerException(message) {
+  this.message = message;
+  this.name = 'AMQPListenerException';
+}
 
 module.exports =
     class AMQPSenecaClient {
       constructor(options) {
-        // Check required params.
-        this.options = options || {};
+        this.options = options || Defaults;
+
         if (!this.options.pins) {
-          throw 'Missing required parameter \'pins\'. Expecting an array of strings.';
+          throw new InvalidParameterException('Missing required option \'pins\'. Expecting an array of strings.');
         }
         this.pins = _.castArray(this.options.pins);
+
         if (!this.options.queue) {
-          throw 'Missing required parameter \'queue\'. Expecting a string.';
+          throw new InvalidParameterException('Missing required option \'queue\'. Expecting a string.');
         }
-        this.queue = _.castArray(this.options.queue);
+        this.queue = this.options.queue;
 
-        // Init listener.
-        this.listener = Seneca()
-          .use('./lib/seneca-amqp-transport');
-
-        // Init publisher.
-        this.publisher = Seneca()
-          .use('./lib/seneca-amqp-transport')
-          .client({
-            type: 'amqp',
-            pin: this.pins,
-            url: process.env.AMQP_URL
-          });
+        if (!this.options.amqp.url) {
+          throw new InvalidParameterException('Missing required option \'amqp.url\'. Expecting a string.');
+        }
+        this.amqpUrl = this.options.amqp.url;
       }
 
       addRecipient(pin, recipient) {
+        if (!this.listener) {
+          // Init listener.
+          this.listener = Seneca()
+            .use('./lib/seneca-amqp-transport');
+        }
         this.listener.add(pin, recipient);
         return this;
       }
 
       send(pin, data, callback) {
         if (!pin) {
-          throw 'Missing required parameter \'pin\'. Expecting a string.';
+          throw new InvalidParameterException('Missing required parameter \'pin\'. Expecting a string.');
         }
         data = data || {};
+
+        if (!this.publisher) {
+          // Init publisher.
+          this.publisher = Seneca()
+            .use('./lib/seneca-amqp-transport')
+            .client({
+              type: 'amqp',
+              pin: this.pins,
+              url: this.amqpUrl
+            });
+        }
+
         if (callback) {
           return this.publisher.act(pin, data, callback);
         }
@@ -56,11 +82,14 @@ module.exports =
       }
 
       listen() {
+        if (!this.listener) {
+          throw new AMQPListenerException('Attempted to call listen() without binding any responders.');
+        }
         return this.listener.listen({
           type: 'amqp',
           pin: this.pins,
           name: this.queue,
-          url: process.env.AMQP_URL
+          url: this.amqpUrl
         });
       }
   };
