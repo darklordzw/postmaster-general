@@ -1,19 +1,18 @@
 {
-  "name": "postmaster-general",
-  "version": "0.0.0",
-  "description": "PostmasterGeneralJS",
+  "name": "@darklordzw/postmaster-general",
+  "version": "0.0.1",
+  "description": "Simple utility for sending microservice messages over AMQP.",
   "main": "postmaster-general.js",
   "files": [
     "postmaster-general.js",
-    "lib/*"
+    "lib/*",
+    "defaults.json"
   ],
   "scripts": {
     "test": "gulp test",
     "validate": "gulp validate"
   },
-  "author": {
-    "name": "Ben Whatley"
-  },
+  "author": "Ben Whatley",
   "dependencies": {
     "amqplib": "^0.5.1",
     "amqpuri": "^1.0.3",
@@ -47,5 +46,22 @@
   },
   "pre-commit": [
     "validate"
-  ]
+  ],
+  "directories": {
+    "example": "examples",
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/darklordzw/postmaster-general.git"
+  },
+  "keywords": [
+    "amqp",
+    "microservices"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/darklordzw/postmaster-general/issues"
+  },
+  "homepage": "https://github.com/darklordzw/postmaster-general#readme"
 }
