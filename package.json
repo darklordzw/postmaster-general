@@ -1,7 +1,21 @@
 {
-  "name": "@darklordzw/postmaster-general",
-  "version": "0.0.1",
-  "description": "Simple utility for sending microservice messages over AMQP.",
+  "name": "postmaster-general",
+  "version": "0.0.2",
+  "description": "A simple library for making synchronous and asynchronous microservice calls using Node.js over AMQP",
+  "author": "Ben Whatley",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/darklordzw/postmaster-general.git"
+  },
+  "keywords": [
+    "amqp",
+    "microservices"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/darklordzw/postmaster-general/issues"
+  },
+  "homepage": "https://github.com/darklordzw/postmaster-general#readme",
   "main": "postmaster-general.js",
   "files": [
     "postmaster-general.js",
@@ -12,7 +26,6 @@
     "test": "gulp test",
     "validate": "gulp validate"
   },
-  "author": "Ben Whatley",
   "dependencies": {
     "amqplib": "^0.5.1",
     "amqpuri": "^1.0.3",
@@ -50,18 +63,5 @@
   "directories": {
     "example": "examples",
     "test": "test"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/darklordzw/postmaster-general.git"
-  },
-  "keywords": [
-    "amqp",
-    "microservices"
-  ],
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/darklordzw/postmaster-general/issues"
-  },
-  "homepage": "https://github.com/darklordzw/postmaster-general#readme"
+  }
 }

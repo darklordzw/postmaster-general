@@ -1,6 +1,6 @@
 MIT License
 
-Original work Copyright (c) 2016 Nicolás Fantone
+Original work Copyright (c) 2016 Nicolás Fantone 
 Modified work Copyright (c) 2016 Ben Whatley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy

@@ -1,7 +1,7 @@
 ﻿# postmaster-general
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/darklordzw/postmaster-general/blob/master/LICENSE)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/darklordzw/postmaster-general/blob/master/LICENSE.md)
 
-Simple Node.js library for microservice communication over [AMQP][2].
+Simple Node.js library for microservice communication over [AMQP][1] using [Seneca.js][2] and [seneca-amqp-transport][3].
 
 ## Install
 
@@ -52,3 +52,11 @@ postmaster.send('action:get_time', {
     console.log(res);
 });
 ```
+
+## License
+Licensed under the [MIT][4] license.
+
+[1]: https://www.amqp.org/ 
+[2]: http://senecajs.org/
+[3]: https://github.com/senecajs/seneca-amqp-transport/
+[4]: ./LICENSE.md
