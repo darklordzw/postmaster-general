@@ -24,7 +24,7 @@ function AMQPListenerException(message) {
 module.exports =
     class AMQPSenecaClient {
       constructor(options) {
-        this.options = options || Defaults;
+        this.options = options || Defaults.amqp;
 
         if (!this.options.pins) {
           throw new InvalidParameterException('Missing required option \'pins\'. Expecting an array of strings.');
@@ -36,10 +36,7 @@ module.exports =
         }
         this.queue = this.options.queue;
 
-        if (!this.options.amqp.url) {
-          throw new InvalidParameterException('Missing required option \'amqp.url\'. Expecting a string.');
-        }
-        this.amqpUrl = this.options.amqp.url;
+        this.amqpUrl = this.options.url || 'amqp://localhost';
       }
 
       addRecipient(pin, recipient) {
@@ -91,5 +88,14 @@ module.exports =
           name: this.queue,
           url: this.amqpUrl
         });
+      }
+
+      close() {
+        if (this.listener) {
+          this.listener.close();
+        }
+        if (this.publisher) {
+          this.publisher.close();
+        }
       }
   };
