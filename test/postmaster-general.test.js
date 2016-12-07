@@ -14,7 +14,8 @@ const PostmasterGeneral = require('../postmaster-general');
 
 // use the default options
 const options = Defaults.amqp;
-options.pins = 'cmd:test,val:recipent';
+options.clientPins = 'cmd:test,val:recipent';
+options.listenerPins = 'cmd:test,val:recipent';
 options.queue = 'postmaster.test.queue';
 
 var postmaster = null;
@@ -30,20 +31,14 @@ describe('Unit tests for postmaster module', function() {
   });
 
   describe('constructor()', function() {
-    it('should throw if missing "pins" option', Sinon.test(function() {
-      Chai.expect(function() {
-        PostmasterGeneral({ queue: 'test' });
-      }).to.throw;
-    }));
-
     it('should throw if missing "queue" option', Sinon.test(function() {
       Chai.expect(function() {
-        PostmasterGeneral({ pins: ['test'] });
+        PostmasterGeneral();
       }).to.throw;
     }));
 
     it('should default to localhost if no url is passed', Sinon.test(function() {
-      var localPostmaster = new PostmasterGeneral({ pins: ['test'], queue: 'test' });
+      var localPostmaster = new PostmasterGeneral({ queue: 'test' });
       localPostmaster.amqpUrl.should.equal('amqp://localhost');
     }));
   });
@@ -75,7 +70,7 @@ describe('Unit tests for postmaster module', function() {
     }));
 
     it('should error if no pins were added', Sinon.test(function() {
-      postmaster.pins = [];
+      postmaster.clientPins = [];
       Chai.expect(postmaster.send).to.throw();
     }));
 

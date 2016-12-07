@@ -17,7 +17,7 @@ The following snippets showcase the most basic usage examples.
 
 ```js
 var PostmasterGeneral = require('postmaster-general');
-var options = { queue: 'app.js.queue', pins: ['action:get_greeting'] };
+var options = { queue: 'app.js.queue', listenerPins: ['action:get_greeting'] };
 var postmaster = new PostmasterGeneral(options);
 
 postmaster.addRecipient('action:get_greeting', function (message, done) {
@@ -34,7 +34,7 @@ postmaster.listen();
 
 ```js
 var PostmasterGeneral = require('postmaster-general');
-var options = { queue: 'app.js.queue', pins: ['action:get_greeting'] };
+var options = { queue: 'app.js.queue', clientPins: ['action:get_greeting'] };
 var postmaster = new PostmasterGeneral(options);
 
 // fire-and-forget publish

@@ -26,10 +26,8 @@ module.exports =
       constructor(options) {
         this.options = options || Defaults.amqp;
 
-        if (!this.options.pins) {
-          throw new InvalidParameterException('Missing required option \'pins\'. Expecting an array of strings.');
-        }
-        this.pins = _.castArray(this.options.pins);
+        this.clientPins = _.castArray(this.options.clientPins);
+        this.listenerPins = _.castArray(this.options.listenerPins);
 
         if (!this.options.queue) {
           throw new InvalidParameterException('Missing required option \'queue\'. Expecting a string.');
@@ -61,7 +59,7 @@ module.exports =
             .use('./lib/seneca-amqp-transport')
             .client({
               type: 'amqp',
-              pin: this.pins,
+              pin: this.clientPins,
               url: this.amqpUrl
             });
         }
@@ -84,7 +82,7 @@ module.exports =
         }
         return this.listener.listen({
           type: 'amqp',
-          pin: this.pins,
+          pin: this.listenerPins,
           name: this.queue,
           url: this.amqpUrl
         });
