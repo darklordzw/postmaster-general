@@ -26,8 +26,8 @@ module.exports =
       constructor(options) {
         this.options = options || Defaults.amqp;
 
-        this.clientPins = _.castArray(this.options.clientPins);
-        this.listenerPins = _.castArray(this.options.listenerPins);
+        this.clientPins = _.castArray(this.options.clientPins || []);
+        this.listenerPins = _.castArray(this.options.listenerPins || []);
 
         if (!this.options.queue) {
           throw new InvalidParameterException('Missing required option \'queue\'. Expecting a string.');
@@ -37,13 +37,26 @@ module.exports =
         this.amqpUrl = this.options.url || 'amqp://localhost';
       }
 
+      init(cb) {
+        this.seneca = Seneca().use('./lib/seneca-amqp-transport');
+        this.seneca.ready((err) => {
+          if (err) {
+            return cb(err);
+          }
+          // Init the client if pins were passed. We need to do this before the listeners are defined.
+          if (this.clientPins.length > 0) {
+            this.publisher = this.seneca.client({
+              type: 'amqp',
+              pin: this.clientPins,
+              url: this.amqpUrl
+            });
+          }
+          return cb();
+        });
+      }
+
       addRecipient(pin, recipient) {
-        if (!this.listener) {
-          // Init listener.
-          this.listener = Seneca()
-            .use('./lib/seneca-amqp-transport');
-        }
-        this.listener.add(pin, recipient);
+        this.seneca.add(pin, recipient);
         return this;
       }
 
@@ -53,34 +66,24 @@ module.exports =
         }
         data = data || {};
 
-        if (!this.publisher) {
-          // Init publisher.
-          this.publisher = Seneca()
-            .use('./lib/seneca-amqp-transport')
-            .client({
-              type: 'amqp',
-              pin: this.clientPins,
-              url: this.amqpUrl
-            });
-        }
+        // Need to set a default to prevent act_not_found issue.
+        data.default$ = {};
 
         if (callback) {
           return this.publisher.act(pin, data, callback);
         }
 
         // If no callback was provided, use "fire-and-forget" calling.
-        // fatal$ tells Seneca.js that we shouldn't die if no response is sent.
-        // skipReply$ indicates to the listener that a reply can be skipped.
-        data.fatal$ = false;
+        // skipReply$ indicates to Seneca that a reply can be skipped.
         data.skipReply$ = true;
         return this.publisher.act(pin, data);
       }
 
       listen() {
-        if (!this.listener) {
-          throw new AMQPListenerException('Attempted to call listen() without binding any responders.');
+        if (!this.seneca) {
+          throw new AMQPListenerException('Attempted to call listen() without first calling init().');
         }
-        return this.listener.listen({
+        return this.seneca.listen({
           type: 'amqp',
           pin: this.listenerPins,
           name: this.queue,
@@ -89,11 +92,8 @@ module.exports =
       }
 
       close() {
-        if (this.listener) {
-          this.listener.close();
-        }
-        if (this.publisher) {
-          this.publisher.close();
+        if (this.seneca) {
+          this.seneca.close();
         }
       }
   };

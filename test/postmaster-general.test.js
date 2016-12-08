@@ -23,7 +23,9 @@ var postmaster = null;
 describe('Unit tests for postmaster module', function() {
   before(function(done) {
     postmaster = new PostmasterGeneral(options);
-    done();
+    postmaster.init(() => {
+      done();
+    });
   });
 
   before(function() {
@@ -44,16 +46,8 @@ describe('Unit tests for postmaster module', function() {
   });
 
   describe('addRecipient()', function() {
-    it('should initialize the listener', Sinon.test(function() {
-      Chai.should().not.exist(postmaster.listener);
-      postmaster.addRecipient('cmd:test,val:recipent', function() {
-        return true;
-      });
-      Chai.should().exist(postmaster.listener);
-    }));
-
     it('should add the pin to the listener', Sinon.test(function() {
-      var spyAdd = this.spy(postmaster.listener, 'add');
+      var spyAdd = this.spy(postmaster.seneca, 'add');
       postmaster.addRecipient('cmd:test,val:recipent', function() {
         return true;
       });
@@ -63,12 +57,6 @@ describe('Unit tests for postmaster module', function() {
   });
 
   describe('send()', function() {
-    it('should initialize the publisher', Sinon.test(function() {
-      Chai.should().not.exist(postmaster.publisher);
-      postmaster.send('cmd:test,val:recipent', { test: 'test' });
-      Chai.should().exist(postmaster.publisher);
-    }));
-
     it('should error if no pins were added', Sinon.test(function() {
       postmaster.clientPins = [];
       Chai.expect(postmaster.send).to.throw();
@@ -94,7 +82,6 @@ describe('Unit tests for postmaster module', function() {
 
       postmaster.send('cmd:test,val:recipent', { test: 'test' }, passedCallback);
       spyAct.should.have.been.calledOnce();
-      spyAct.should.have.been.calledWithExactly('cmd:test,val:recipent', { test: 'test' }, passedCallback);
     }));
 
     it('should call without a callback if none passed', Sinon.test(function() {
@@ -106,7 +93,7 @@ describe('Unit tests for postmaster module', function() {
       });
 
       var data = {
-        fatal$: false,
+        default$: {},
         skipReply$: true,
         test: 'test'
       };
@@ -126,7 +113,7 @@ describe('Unit tests for postmaster module', function() {
       postmaster.addRecipient('cmd:test,val:recipent', function() {
         return true;
       });
-      var spyListen = this.spy(postmaster.listener, 'listen');
+      var spyListen = this.spy(postmaster.seneca, 'listen');
       postmaster.listen();
       spyListen.should.have.been.calledOnce();
     }));
@@ -138,7 +125,7 @@ describe('Unit tests for postmaster module', function() {
         return true;
       });
 
-      var spyClose = this.spy(postmaster.listener, 'close');
+      var spyClose = this.spy(postmaster.seneca, 'close');
       postmaster.close();
       spyClose.should.have.been.calledOnce();
     }));

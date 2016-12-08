@@ -20,14 +20,20 @@ var PostmasterGeneral = require('postmaster-general');
 var options = { queue: 'app.js.queue', listenerPins: ['action:get_greeting'] };
 var postmaster = new PostmasterGeneral(options);
 
-postmaster.addRecipient('action:get_greeting', function (message, done) {
+postmaster.init((err) => {
+  if (err) {
+    console.error(err);
+    return;
+  }
+  postmaster.addRecipient('action:get_greeting', function (message, done) {
     console.log('[action:get_greeting] received');
     return done(null, {
         greeting: 'Hello, ' + message.name
     });
-});
+  });
 
-postmaster.listen();
+  postmaster.listen();
+});
 ```
 
 ### Publisher
@@ -37,19 +43,26 @@ var PostmasterGeneral = require('postmaster-general');
 var options = { queue: 'app.js.queue', clientPins: ['action:get_greeting'] };
 var postmaster = new PostmasterGeneral(options);
 
-// fire-and-forget publish
-postmaster.send('action:get_greeting', {
-    name: 'Bob'
-});
+postmaster.init((err) => {
+  if (err) {
+    console.error(err);
+    return;
+  }
 
-// publish with expected response.
-postmaster.send('action:get_greeting', {
+  // fire-and-forget publish
+  postmaster.send('action:get_greeting', {
+    name: 'Bob'
+  });
+
+  // publish with expected response.
+  postmaster.send('action:get_greeting', {
     name: 'Steve'
-}, (err, res) => {
+  }, (err, res) => {
     if (err) {
-        throw err;
-    }
-    console.log(res.greeting);
+      throw err;
+      }
+      console.log(res.greeting);
+  });
 });
 ```
 
