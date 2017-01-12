@@ -1,6 +1,6 @@
 {
   "name": "postmaster-general",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A simple library for making synchronous and asynchronous microservice calls using Node.js over AMQP.",
   "author": "Ben Whatley",
   "repository": {
@@ -62,9 +62,9 @@
         "error",
         "always"
       ],
-	 "import/no-unresolved": "off",
-	 "no-use-extend-native/no-use-extend-native": "off",
-	 "new-cap": "off"
+      "import/no-unresolved": "off",
+      "no-use-extend-native/no-use-extend-native": "off",
+      "new-cap": "off"
     }
   }
 }
