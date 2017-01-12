@@ -68,6 +68,7 @@ module.exports =
 
 			// Need to set a default to prevent act_not_found issue.
 			data.default$ = {};
+			data.fatal$ = false;
 
 			if (callback) {
 				return this.publisher.act(pin, data, callback);
