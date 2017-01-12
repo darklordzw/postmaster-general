@@ -1,9 +1,0 @@
-{
-  "paths": {
-    "src": ["postmaster-general.js", "lib/**/*.js", "!lib/*hook.js", "!lib/seneca-amqp-transport.js"],
-    "test": ["test/**/*spec.js", "test/**/*test.js"]
-  },
-  "eslint": {
-    "failOnError": true
-  }
-}
