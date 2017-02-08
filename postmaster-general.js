@@ -11,8 +11,9 @@ const defaults = require('./defaults');
 
 const mSelf = module.exports = {
 	Postmaster: class {
-		constructor(options) {
+		constructor(queueName, options) {
 			this.options = _.defaults({}, options, defaults);
+			this.options.listener.name = queueName;
 			this.publisherConn = {};
 			this.listenerConn = {};
 
@@ -31,7 +32,6 @@ const mSelf = module.exports = {
 						self.listenerConn = conn;
 					})
 					.then(() => self.declareDeadLetter(self.publisherConn.channel))
-					.then(() => self.declareDeadLetter(self.listenerConn.channel))
 					.then(() => self.listenForReplies())
 					.then(() => self.listenForMessages());
 			};
@@ -235,21 +235,6 @@ const mSelf = module.exports = {
 			 * Declares an exchange and queue described by
 			 * `options` and binds them with '#' as
 			 * routing key.
-			 *
-			 * `options` is an Object matching the following example:
-			 * {
-			 *   "queue": {
-			 *     "name": "seneca.dlq"
-			 *   },
-			 *   "exchange": {
-			 *     "type": "topic",
-			 *     "name": "seneca.dlx",
-			 *     "options": {
-			 *       "durable": true,
-			 *       "autoDelete": false
-			 *     }
-			 *   }
-			 * }
 			 *
 			 * @param  {Objet} options   Configuration for the dead-letter queue and exchange.
 			 * @param  {amqplib.Channel} channel Queue and exchange will be declared on this channel.

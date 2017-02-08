@@ -1,7 +1,7 @@
 ﻿'use strict';
 
 const PostmasterGeneral = require('../postmaster-general').Postmaster;
-const postmaster = new PostmasterGeneral();
+const postmaster = new PostmasterGeneral("serverqueue");
 
 // Start the Postmaster instance.
 postmaster.start()
