@@ -2,9 +2,10 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/darklordzw/postmaster-general/blob/master/LICENSE.md)
 
 Simple, promise-based Node.js library, for microservice communication over [AMQP][1].
-Supports both "fire-and-forget" and RPC calling patterns.
+Supports both "fire-and-forget" and RPC calling patterns. Inspired by [seneca-amqp-transport][3].
 
-Inspired by [seneca-amqp-transport][3].
+Note: Version 1.0.0 of this library represents a big departure from version 0.2.0. Be sure to check out
+the examples to make sure you're migrating properly.
 
 ## Install
 
@@ -21,32 +22,23 @@ const PostmasterGeneral = require('../postmaster-general').PostmasterGeneral;
 const postmaster = new PostmasterGeneral('pub-sub');
 
 // Start the Postmaster instance.
-// Start the Postmaster instance.
 postmaster.start()
-	.then(() => {
-		// Register listeners.
-		return postmaster.addListener('action:get_greeting', function (message, done) {
-			console.log('[action:get_greeting] received');
-			return done(null, {
-				greeting: 'Hello, ' + message.name
-			});
+	// Add a listener callback.
+	.then(() => postmaster.addListener('action:get_greeting', function (message, done) {
+		console.log('[action:get_greeting] received');
+		return done(null, {
+			greeting: 'Hello, ' + message.name
 		});
-	})
-	.then(() => {
-		// Publish a fire-and-forget message.
-		return postmaster.publish('action:get_greeting', {
-			name: 'Bob'
-		}, null);
-	})
-	.then(() => {
-		// Publish a message with a callback.
-		return postmaster.publish('action:get_greeting', {
-			name: 'Steve'
-		}, null, true)
-			.then((res) => {
-				console.log(res.greeting);
-			});
+	}))
+	// Publish a fire-and-forget message.
+	.then(() => postmaster.publish('action:get_greeting', {name: 'Bob'}, null))
+	// Publish a message with a callback.
+	.then(() => postmaster.publish('action:get_greeting', {name: 'Steve'}, null, true))
+	// Handle the callback.
+	.then((res) => {
+		console.log(res.greeting);
 	});
+
 ```
 
 ## License
