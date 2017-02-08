@@ -10,7 +10,7 @@ const uuid = require('uuid');
 const defaults = require('./defaults');
 
 const mSelf = module.exports = {
-	PostmasterGeneral: class {
+	Postmaster: class {
 		constructor(options) {
 			this.options = _.defaults({}, options, defaults);
 			this.publisherConn = {};
