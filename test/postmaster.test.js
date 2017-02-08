@@ -25,7 +25,7 @@ describe('utility functions', () => {
 	let postmaster;
 
 	before(() => {
-		postmaster = new postmasterGeneral.Postmaster();
+		postmaster = new postmasterGeneral.PostmasterGeneral();
 	});
 
 	describe('resolveCallbackQueue()', () => {
@@ -81,7 +81,7 @@ describe('publisher functions', () => {
 	let sandbox;
 
 	before(() => {
-		postmaster = new postmasterGeneral.Postmaster();
+		postmaster = new postmasterGeneral.PostmasterGeneral();
 		return postmaster.start();
 	});
 
@@ -237,7 +237,7 @@ describe('listener tests', function () {
 	let sandbox;
 
 	before(() => {
-		postmaster = new postmasterGeneral.Postmaster();
+		postmaster = new postmasterGeneral.PostmasterGeneral();
 		return postmaster.start();
 	});
 

@@ -16,8 +16,9 @@ npm install --save postmaster-general
 The following snippet showcases basic usage.
 
 ```js
-const PostmasterGeneral = require('../postmaster-general').Postmaster;
-const postmaster = new PostmasterGeneral("pub-sub");
+const PostmasterGeneral = require('../postmaster-general').PostmasterGeneral;
+
+const postmaster = new PostmasterGeneral('pub-sub');
 
 // Start the Postmaster instance.
 postmaster.start()

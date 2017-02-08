@@ -1,6 +1,9 @@
 ﻿'use strict';
 
 /**
+ * A simple library for making both RPC and fire-and-forget microservice
+ * calls using AMQP.
+ *
  * @module postmaster-general
  */
 const _ = require('lodash');
@@ -10,7 +13,12 @@ const uuid = require('uuid');
 const defaults = require('./defaults');
 
 const mSelf = module.exports = {
-	Postmaster: class {
+	PostmasterGeneral: class {
+		/**
+		 * Constructor function for the Postmaster object.
+		 * @param {string} queueName
+		 * @param {object} options
+		 */
 		constructor(queueName, options) {
 			this.options = _.defaults({}, options, defaults);
 			this.options.listener.name = queueName;
@@ -22,7 +30,11 @@ const mSelf = module.exports = {
 			// and to make the context more clear, use 'self' reference within member methods.
 			let self = this;
 
+			/**
+			 * Called to start the PostmasterGeneral instance.
+			 */
 			this.start = () => {
+				console.log('Starting postmaster-general...');
 				return self.connect('publisher')
 					.then((conn) => {
 						self.publisherConn = conn;
@@ -33,9 +45,15 @@ const mSelf = module.exports = {
 					})
 					.then(() => self.declareDeadLetter(self.publisherConn.channel))
 					.then(() => self.listenForReplies())
-					.then(() => self.listenForMessages());
+					.then(() => self.listenForMessages())
+					.then(() => {
+						console.log('postmaster-general started!');
+					});
 			};
 
+			/**
+			 * Called to stop the PostmasterGeneral instance.
+			 */
 			this.stop = () => {
 				return Promise.all([
 					self.close('publisher'),
@@ -49,6 +67,7 @@ const mSelf = module.exports = {
 			 * @returns {Promise} - Promise callback indicating connection success or failure.
 			 */
 			this.connect = (connectionType) => {
+				console.log(`Connecting ${connectionType} to AMQP host ${self.options.url}`);
 				let queueOptions = self.options[connectionType];
 				return amqp.connect(self.options.url, self.options.socketOptions)
 					.then((conn) => conn.createChannel())
@@ -63,6 +82,7 @@ const mSelf = module.exports = {
 							queue: channel.assertQueue(queueName, queue.options),
 							timeout: queue.options.arguments['x-message-ttl']
 						}).then((connection) => {
+							console.log(`${connectionType} connected!`);
 							return {
 								channel: connection.channel,
 								exchange: connection.exchange.exchange,
@@ -135,11 +155,16 @@ const mSelf = module.exports = {
 							timeout.clearTimeout();
 							delete self.publisherConn.callMap[correlationId];
 							reject(new mSelf.PublishBufferFullError(`postmaster-general failed sending message due to full publish buffer! topic='${topic}' message='${messageString}'`));
+						} else if (self.options.logSent) {
+							console.log(`postmaster-general sent message successfully! topic='${topic}' message='${messageString}'`);
 						}
 					} else {
 						// if no callback is requested, simply publish the message.
 						let pubSuccess = self.publisherConn.channel.publish(self.publisherConn.exchange, topic, new Buffer(messageString), options);
 						if (pubSuccess) {
+							if (self.options.logSent) {
+								console.log(`postmaster-general sent message successfully! topic='${topic}' message='${messageString}'`);
+							}
 							resolve();
 						} else {
 							reject(new mSelf.PublishBufferFullError(`postmaster-general failed sending message due to full publish buffer! topic='${topic}' message='${messageString}'`));
@@ -162,6 +187,8 @@ const mSelf = module.exports = {
 					let content = message.content ? message.content.toString() : undefined;
 					self.publisherConn.callMap[correlationId](null, JSON.parse(content));
 					delete self.publisherConn.callMap[correlationId];
+				} else {
+					console.warn(`postmaster-general received reply to a request it didn't send! message=${JSON.stringify(message)}`);
 				}
 			};
 
@@ -189,6 +216,9 @@ const mSelf = module.exports = {
 
 			// #region Listener
 
+			/**
+			 * Called to bind a new listener to the queue.
+			 */
 			this.addListener = (address, callback) => {
 				let topic = self.resolveTopic(address);
 				return self.listenerConn.channel.bindQueue(self.listenerConn.queue, self.listenerConn.exchange, topic)
@@ -197,10 +227,14 @@ const mSelf = module.exports = {
 					});
 			};
 
+			/**
+			 * Called to process a message when it's received.
+			 */
 			this.handleMessage = (message, data) => {
 				return self.listenerConn.callMap[message.fields.routingKey](data, (error, out) => {
 					if (error) {
 						console.error(`Error processing message. message='${JSON.stringify(message)}' error='${error.message}'`);
+						return self.listenerConn.channel.nack(message, false, false);
 					} else if (out && message.properties.replyTo) {
 						self.listenerConn.channel.sendToQueue(message.properties.replyTo, new Buffer(JSON.stringify(out)), {
 							correlationId: message.properties.correlationId
@@ -212,6 +246,9 @@ const mSelf = module.exports = {
 				});
 			};
 
+			/**
+			 * Called upon receipt of a new message.
+			 */
 			this.consume = (message) => {
 				let content = message.content ? message.content.toString() : undefined;
 				if (!content) {
@@ -223,6 +260,9 @@ const mSelf = module.exports = {
 				return self.handleMessage(message, data);
 			};
 
+			/**
+			 * Called to set the listener to listening.
+			 */
 			this.listenForMessages = () => {
 				return self.listenerConn.channel.consume(self.listenerConn.queue, self.consume);
 			};
@@ -274,8 +314,11 @@ const mSelf = module.exports = {
 		}
 	},
 
-	// #region Custom Exceptions
+	// #region Errors
 
+	/**
+	 * Error sent when RPC-style callbacks timeout.
+	 */
 	RPCTimeoutError: class extends Error {
 		constructor(message) {
 			super(message);
@@ -284,6 +327,9 @@ const mSelf = module.exports = {
 		}
 	},
 
+	/**
+	 * Error sent when publishing failed due a full send buffer.
+	 */
 	PublishBufferFullError: class extends Error {
 		constructor(message) {
 			super(message);
