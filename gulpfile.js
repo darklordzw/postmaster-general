@@ -8,7 +8,7 @@ const gulp = require('gulp');
  set options. See https://github.com/darklordzw/gulp-test-rigging#readme */
 require('gulp-test-rigging')(gulp, {
 	paths: {
-		src: ['postmaster-general.js', 'lib/**/*.js', 'examples/**/*.js']
+		src: ['postmaster-general.js', 'examples/**/*.js']
 	}
 });
 
