@@ -5,11 +5,11 @@
 		"url": {
 			"type": "string"
 		},
-		"listen": {
-			"required": [ "channel", "queues" ],
+		"listener": {
+			"required": [ "channel", "queue" ],
 			"type": "object",
 			"properties": {
-				"queues": {
+				"queue": {
 					"required": [ "options", "prefix", "separator" ],
 					"type": "object",
 					"properties": {
@@ -41,11 +41,11 @@
 				}
 			}
 		},
-		"client": {
-			"required": [ "channel", "queues" ],
+		"publisher": {
+			"required": [ "channel", "queue" ],
 			"type": "object",
 			"properties": {
-				"queues": {
+				"queue": {
 					"required": [ "options", "prefix", "separator" ],
 					"type": "object",
 					"properties": {

@@ -18,16 +18,19 @@ const mSelf = module.exports = {
 		}
 
 		start() {
+			return this.connect('publisher')
+				.then((conn) => {this.publisherConn = conn})
+				.then(() => this.connect('listener'))
+				.then((conn) => {this.listenerConn = conn})
+				.then(() => this.declareDeadLetter(this.publisherConn.channel))
+				.then(() => this.declareDeadLetter(this.listenerConn.channel))
+				.then(() => this.listenForReplies());
+		}
+
+		stop() {
 			return Promise.all([
-				// Connect to RabbitMQ
-				this.connect('publisher'),
-				this.connect('listener'),
-				// Declare "dead letter" queues
-				this.declareDeadLetter(this.publisherConn.channel),
-				this.declareDeadLetter(this.listenerConn.channel),
-				// Start listening
-				this.listenForReplies(),
-				this.listenForMessages()
+				this.close('publisher'),
+				this.close('listener')
 			]);
 		}
 
@@ -48,12 +51,14 @@ const mSelf = module.exports = {
 					return Promise.props({
 						channel,
 						exchange: channel.assertExchange(ex.name, ex.type, ex.options),
-						queue: channel.assertQueue(queueName, queue.options)
+						queue: channel.assertQueue(queueName, queue.options),
+						timeout: queue.options.arguments['x-message-ttl']
 					}).then((connection) => {
 						return {
 							channel: connection.channel,
 							exchange: connection.exchange.exchange,
 							queue: connection.queue.queue,
+							timeout: connection.timeout,
 							callMap: {}
 						};
 					});
@@ -111,16 +116,17 @@ const mSelf = module.exports = {
 
 					// If no response is returned, clear the callback and return an error.
 					timeout = setTimeout(() => {
+						console.log('hit the timeout!');
 						delete this.publisherConn.callMap[correlationId];
-						reject(new mSelf.RPCTimeoutError(`postmaster-general timeout while sending message! topic='${topic} message='${messageString}'`));
-					}, this.options.timeout);
+						reject(new mSelf.RPCTimeoutError(`postmaster-general timeout while sending message! topic='${topic}' message='${messageString}'`));
+					}, this.publisherConn.timeout);
 
 					// Publish the message. If publishing failed, indicate that the channel's write buffer is full.
 					let pubSuccess = this.publisherConn.channel.publish(this.publisherConn.exchange, topic, new Buffer(messageString), options);
 					if (!pubSuccess) {
 						timeout.clearTimeout();
 						delete this.publisherConn.callMap[correlationId];
-						reject(new mSelf.PublishBufferFullError(`postmaster-general failed sending message due to full publish buffer! topic='${topic} message='${messageString}'`));
+						reject(new mSelf.PublishBufferFullError(`postmaster-general failed sending message due to full publish buffer! topic='${topic}' message='${messageString}'`));
 					}
 				} else {
 					// if no callback is requested, simply publish the message.
@@ -128,7 +134,7 @@ const mSelf = module.exports = {
 					if (pubSuccess) {
 						resolve();
 					} else {
-						reject(new mSelf.PublishBufferFullError(`postmaster-general failed sending message due to full publish buffer! topic='${topic} message='${messageString}'`));
+						reject(new mSelf.PublishBufferFullError(`postmaster-general failed sending message due to full publish buffer! topic='${topic}' message='${messageString}'`));
 					}
 				}
 			});
@@ -268,7 +274,7 @@ const mSelf = module.exports = {
 		 * @param {string} address
 		 */
 		resolveTopic(address) {
-			address.replace(':', '.');
+			return address.replace(':', '.');
 		}
 	},
 
