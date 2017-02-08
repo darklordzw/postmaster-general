@@ -4,6 +4,8 @@
 Simple, promise-based Node.js library, for microservice communication over [AMQP][1].
 Supports both "fire-and-forget" and RPC calling patterns.
 
+Inspired by [seneca-amqp-transport][3].
+
 ## Install
 
 ```sh
@@ -50,3 +52,4 @@ Licensed under the [MIT][2] license.
 
 [1]: https://www.amqp.org/ 
 [2]: ./LICENSE.md
+[3]: https://github.com/senecajs/seneca-amqp-transport/
