@@ -1,117 +1,111 @@
 {
-  "required": ["amqp"],
-  "type": "object",
-  "properties": {
-    "amqp": {
-      "required": ["client", "exchange", "listen", "type", "url"],
-      "type": "object",
-      "properties": {
-        "url": {
-          "type": "string"
-        },
-        "listen": {
-          "required": ["channel", "queues"],
-          "type": "object",
-          "properties": {
-            "queues": {
-              "required": ["options", "prefix", "separator"],
-              "type": "object",
-              "properties": {
-                "prefix": {
-                  "type": "string"
-                },
-                "separator": {
-                  "type": "string"
-                },
-                "options": {
-                  "required": ["durable"],
-                  "type": "object",
-                  "properties": {
-                    "durable": {
-                      "type": "boolean"
-                    }
-                  }
-                }
-              }
-            },
-            "channel": {
-              "required": ["prefetch"],
-              "type": "object",
-              "properties": {
-                "prefetch": {
-                  "type": "integer"
-                }
-              }
-            }
-          }
-        },
-        "client": {
-          "required": ["channel", "queues"],
-          "type": "object",
-          "properties": {
-            "queues": {
-              "required": ["options", "prefix", "separator"],
-              "type": "object",
-              "properties": {
-                "prefix": {
-                  "type": "string"
-                },
-                "separator": {
-                  "type": "string"
-                },
-                "options": {
-                  "required": ["autoDelete", "exclusive"],
-                  "type": "object",
-                  "properties": {
-                    "exclusive": {
-                      "type": "boolean"
-                    },
-                    "autoDelete": {
-                      "type": "boolean"
-                    }
-                  }
-                }
-              }
-            },
-            "channel": {
-              "required": ["prefetch"],
-              "type": "object",
-              "properties": {
-                "prefetch": {
-                  "type": "integer"
-                }
-              }
-            }
-          }
-        },
-        "type": {
-          "type": "string"
-        },
-        "exchange": {
-          "required": ["name", "options", "type"],
-          "type": "object",
-          "properties": {
-            "type": {
-              "type": "string"
-            },
-            "name": {
-              "type": "string"
-            },
-            "options": {
-              "required": ["autoDelete", "durable"],
-              "type": "object",
-              "properties": {
-                "durable": {
-                  "type": "boolean"
-                },
-                "autoDelete": {
-                  "type": "boolean"
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
+	"required": [ "publisher", "exchange", "listener", "type", "url" ],
+	"type": "object",
+	"properties": {
+		"url": {
+			"type": "string"
+		},
+		"listen": {
+			"required": [ "channel", "queues" ],
+			"type": "object",
+			"properties": {
+				"queues": {
+					"required": [ "options", "prefix", "separator" ],
+					"type": "object",
+					"properties": {
+						"prefix": {
+							"type": "string"
+						},
+						"separator": {
+							"type": "string"
+						},
+						"options": {
+							"required": [ "durable" ],
+							"type": "object",
+							"properties": {
+								"durable": {
+									"type": "boolean"
+								}
+							}
+						}
+					}
+				},
+				"channel": {
+					"required": [ "prefetch" ],
+					"type": "object",
+					"properties": {
+						"prefetch": {
+							"type": "integer"
+						}
+					}
+				}
+			}
+		},
+		"client": {
+			"required": [ "channel", "queues" ],
+			"type": "object",
+			"properties": {
+				"queues": {
+					"required": [ "options", "prefix", "separator" ],
+					"type": "object",
+					"properties": {
+						"prefix": {
+							"type": "string"
+						},
+						"separator": {
+							"type": "string"
+						},
+						"options": {
+							"required": [ "autoDelete", "exclusive" ],
+							"type": "object",
+							"properties": {
+								"exclusive": {
+									"type": "boolean"
+								},
+								"autoDelete": {
+									"type": "boolean"
+								}
+							}
+						}
+					}
+				},
+				"channel": {
+					"required": [ "prefetch" ],
+					"type": "object",
+					"properties": {
+						"prefetch": {
+							"type": "integer"
+						}
+					}
+				}
+			}
+		},
+		"type": {
+			"type": "string"
+		},
+		"exchange": {
+			"required": [ "name", "options", "type" ],
+			"type": "object",
+			"properties": {
+				"type": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				},
+				"options": {
+					"required": [ "autoDelete", "durable" ],
+					"type": "object",
+					"properties": {
+						"durable": {
+							"type": "boolean"
+						},
+						"autoDelete": {
+							"type": "boolean"
+						}
+					}
+				}
+			}
+		}
+	}
 }
