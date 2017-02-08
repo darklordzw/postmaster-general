@@ -19,7 +19,6 @@
   "main": "postmaster-general.js",
   "files": [
     "postmaster-general.js",
-    "lib/*",
     "defaults.json"
   ],
   "scripts": {
@@ -28,12 +27,8 @@
   },
   "dependencies": {
     "amqplib": "^0.5.1",
-    "amqpuri": "^1.0.3",
     "bluebird": "^3.4.7",
-    "jsonic": "^0.2.2",
     "lodash": "^4.17.4",
-    "patrun": "^0.5.1",
-    "seneca": "^3.2.2",
     "uuid": "^3.0.1"
   },
   "devDependencies": {
@@ -42,7 +37,7 @@
     "dirty-chai": "^1.2.2",
     "gulp": "^3.9.1",
     "gulp-test-rigging": "0.0.5",
-    "sinon": "^1.17.6",
+    "sinon": "^1.17.7",
     "sinon-bluebird": "^3.1.0",
     "sinon-chai": "^2.8.0"
   },
