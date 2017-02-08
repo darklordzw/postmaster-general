@@ -107,7 +107,7 @@ describe('publisher functions', () => {
 			let spyPublish = sandbox.spy(postmaster.publisherConn.channel, 'publish');
 
 			// publish the message
-			postmaster.publish('role:create', { max: 100, min: 25 }, true)
+			postmaster.publish('role:create', { max: 100, min: 25 }, null, true)
 				.then(() => {
 					done('Should have timed out while waiting on a reply!');
 				})
@@ -129,7 +129,7 @@ describe('publisher functions', () => {
 			let spyPublish = sandbox.spy(postmaster.publisherConn.channel, 'publish');
 
 			// publish the message
-			postmaster.publish('role:create', { max: 100, min: 25 })
+			postmaster.publish('role:create', { max: 100, min: 25 }, null)
 				.then(() => {
 					try {
 						spyResolveTopic.should.have.been.calledOnce();

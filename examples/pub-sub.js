@@ -19,13 +19,13 @@ postmaster.start()
 		// Publish a fire-and-forget message.
 		return postmaster.publish('action:get_greeting', {
 			name: 'Bob'
-		});
+		}, null);
 	})
 	.then(() => {
 		// Publish a message with a callback.
 		return postmaster.publish('action:get_greeting', {
 			name: 'Steve'
-		}, true)
+		}, null, true)
 			.then((res) => {
 				console.log(res.greeting);
 			});

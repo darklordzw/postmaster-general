@@ -114,16 +114,23 @@ const mSelf = module.exports = {
 			 * Publishes a message to the specified address, optionally returning a callback.
 			 * @param {string} address - The message address.
 			 * @param {object} message - The message data.
+			 * @param {string} requestId - Unique identifier used to trace messages across services. Must be defined.
 			 * @param {boolean} replyRequired - If true, a reply is expected for this message.
 			 * @returns {Promise} - Promise returning the message response, if one is requested.
 			 */
-			this.publish = (address, message, replyRequired) => {
+			this.publish = (address, message, requestId, replyRequired) => {
 				return new Promise((resolve, reject) => {
 					let topic = self.resolveTopic(address);
 					let messageString = JSON.stringify(message);
 					let options = {
 						contentType: 'application/json'
 					};
+
+					// RequestId is required, but nullable.
+					if (_.isUndefined(requestId)) {
+						reject('requestId must be provided, or be set to null!');
+						return;
+					}
 
 					if (replyRequired) {
 						// If we want a reply, we need to store the correlation id so we know which handler to call.
@@ -151,12 +158,18 @@ const mSelf = module.exports = {
 
 						// Publish the message. If publishing failed, indicate that the channel's write buffer is full.
 						let pubSuccess = self.publisherConn.channel.publish(self.publisherConn.exchange, topic, new Buffer(messageString), options);
-						if (!pubSuccess) {
+						if (pubSuccess) {
+							if (self.options.logSent) {
+								console.log(`postmaster-general sent message successfully! topic='${topic}' message='${messageString}'`);
+							}
+							// Log the request, if the tracing request id is passed.
+							if (requestId) {
+								self.publisherConn.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(messageString), { contentType: 'application/json' });
+							}
+						} else {
 							timeout.clearTimeout();
 							delete self.publisherConn.callMap[correlationId];
 							reject(new mSelf.PublishBufferFullError(`postmaster-general failed sending message due to full publish buffer! topic='${topic}' message='${messageString}'`));
-						} else if (self.options.logSent) {
-							console.log(`postmaster-general sent message successfully! topic='${topic}' message='${messageString}'`);
 						}
 					} else {
 						// if no callback is requested, simply publish the message.
@@ -164,6 +177,10 @@ const mSelf = module.exports = {
 						if (pubSuccess) {
 							if (self.options.logSent) {
 								console.log(`postmaster-general sent message successfully! topic='${topic}' message='${messageString}'`);
+							}
+							// Log the request, if the tracing request id is passed.
+							if (requestId) {
+								self.publisherConn.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(messageString), { contentType: 'application/json' });
 							}
 							resolve();
 						} else {

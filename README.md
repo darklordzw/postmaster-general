@@ -21,6 +21,7 @@ const PostmasterGeneral = require('../postmaster-general').PostmasterGeneral;
 const postmaster = new PostmasterGeneral('pub-sub');
 
 // Start the Postmaster instance.
+// Start the Postmaster instance.
 postmaster.start()
 	.then(() => {
 		// Register listeners.
@@ -35,13 +36,13 @@ postmaster.start()
 		// Publish a fire-and-forget message.
 		return postmaster.publish('action:get_greeting', {
 			name: 'Bob'
-		});
+		}, null);
 	})
 	.then(() => {
 		// Publish a message with a callback.
 		return postmaster.publish('action:get_greeting', {
 			name: 'Steve'
-		}, true)
+		}, null, true)
 			.then((res) => {
 				console.log(res.greeting);
 			});
