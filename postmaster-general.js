@@ -100,12 +100,7 @@ const mSelf = module.exports = {
 			 */
 			this.close = function (connectionType) {
 				let connection = connectionType === 'publisher' ? self.publisherConn : self.listenerConn;
-				try {
-					connection.channel.close();
-					connection.channel.connection.close();
-				} catch (err) {
-					console.error(`AMQP channel already closed! message='${err.message}'`);
-				}
+				return connection.channel.connection.close();
 			};
 
 			// #region Publisher
@@ -207,7 +202,16 @@ const mSelf = module.exports = {
 				let correlationId = message.properties.correlationId;
 				if (correlationId && self.publisherConn.callMap[correlationId]) {
 					let content = message.content ? message.content.toString() : undefined;
-					self.publisherConn.callMap[correlationId](null, JSON.parse(content));
+					// If there's no content in the response, indicate error
+					if (content) {
+						content = JSON.parse(content);
+						// Add special fields for logging.
+						content.$requestId = message.properties.headers.requestId;
+						content.$trace = message.properties.headers.trace;
+						self.publisherConn.callMap[correlationId](null, content);
+					} else {
+						self.publisherConn.callMap[correlationId](new mSelf.InvalidRPCResponseError(`Invalid response received for call with correlationId ${correlationId}`));
+					}
 					delete self.publisherConn.callMap[correlationId];
 				} else {
 					console.warn(`postmaster-general received reply to a request it didn't send! message=${JSON.stringify(message)}`);
@@ -253,13 +257,18 @@ const mSelf = module.exports = {
 			 * Called to process a message when it's received.
 			 */
 			this.handleMessage = function (message, data) {
+				// Add special message fields for logging.
+				data.$requestId = message.properties.headers.requestId;
+				data.$trace = message.properties.headers.trace;
+
 				return self.listenerConn.callMap[message.fields.routingKey](data, (error, out) => {
 					if (error) {
 						console.error(`Error processing message. message='${JSON.stringify(message)}' error='${error.message}'`);
 						return self.listenerConn.channel.nack(message, false, false);
 					} else if (out && message.properties.replyTo) {
 						self.listenerConn.channel.sendToQueue(message.properties.replyTo, new Buffer(JSON.stringify(out)), {
-							correlationId: message.properties.correlationId
+							correlationId: message.properties.correlationId,
+							headers: message.properties.headers
 						});
 						self.listenerConn.channel.ack(message);
 					} else {
@@ -352,6 +361,17 @@ const mSelf = module.exports = {
 	 * Error sent when publishing failed due a full send buffer.
 	 */
 	PublishBufferFullError: class extends Error {
+		constructor(message) {
+			super(message);
+			Error.captureStackTrace(this, this.constructor);
+			this.name = this.constructor.name;
+		}
+	},
+
+	/**
+	 * Error sent when the rpc response sends back an invalid response.
+	 */
+	InvalidRPCResponseError: class extends Error {
 		constructor(message) {
 			super(message);
 			Error.captureStackTrace(this, this.constructor);

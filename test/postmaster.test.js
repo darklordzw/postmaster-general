@@ -88,7 +88,7 @@ describe('publisher functions', function () {
 	});
 
 	after(function () {
-		postmaster.stop();
+		return postmaster.stop();
 	});
 
 	afterEach(function () {
@@ -158,7 +158,7 @@ describe('full stack tests', function () {
 	});
 
 	after(function () {
-		postmaster.stop();
+		return postmaster.stop();
 	});
 
 	afterEach(function () {
@@ -188,6 +188,32 @@ describe('full stack tests', function () {
 			.then(() => postmaster.publish('action:get_greeting', {name: 'Steve'}))
 			.then((res) => {
 				expect(res).to.not.exist();
+			});
+	});
+
+	it('should pass $requestId and $trace', function () {
+		return postmaster.addListener('action:get_greeting', function (message, cb) {
+			// Check the listener side.
+			expect(message.$requestId).to.exist();
+			message.$requestId.should.equal('testId');
+			expect(message.$trace).to.exist();
+			message.$trace.should.equal(true);
+
+			return cb(null, {
+				greeting: 'Hello, ' + message.name
+			});
+		})
+			.then(() => postmaster.publish('action:get_greeting', {name: 'Steve'}, {replyRequired: true, requestId: 'testId', trace: true}))
+			.then((res) => {
+				expect(res).to.exist();
+				expect(res.greeting).to.exist();
+				res.greeting.should.equal('Hello, Steve');
+
+				// Check the callback side
+				expect(res.$requestId).to.exist();
+				res.$requestId.should.equal('testId');
+				expect(res.$trace).to.exist();
+				res.$trace.should.equal(true);
 			});
 	});
 });
