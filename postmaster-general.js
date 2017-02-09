@@ -33,7 +33,7 @@ const mSelf = module.exports = {
 			/**
 			 * Called to start the PostmasterGeneral instance.
 			 */
-			this.start = () => {
+			this.start = function () {
 				console.log('Starting postmaster-general...');
 				return self.connect('publisher')
 					.then((conn) => {
@@ -54,7 +54,7 @@ const mSelf = module.exports = {
 			/**
 			 * Called to stop the PostmasterGeneral instance.
 			 */
-			this.stop = () => {
+			this.stop = function () {
 				return Promise.all([
 					self.close('publisher'),
 					self.close('listener')
@@ -66,7 +66,7 @@ const mSelf = module.exports = {
 			 * @param {string} connectionType - Either "publisher" or "listener".
 			 * @returns {Promise} - Promise callback indicating connection success or failure.
 			 */
-			this.connect = (connectionType) => {
+			this.connect = function (connectionType) {
 				console.log(`Connecting ${connectionType} to AMQP host ${self.options.url}`);
 				let queueOptions = self.options[connectionType];
 				return amqp.connect(self.options.url, self.options.socketOptions)
@@ -98,7 +98,7 @@ const mSelf = module.exports = {
 			 * Disconnects from the AMQP server.
 			 * @param {string} connectionType - Either "publisher" or "listener".
 			 */
-			this.close = (connectionType) => {
+			this.close = function (connectionType) {
 				let connection = connectionType === 'publisher' ? self.publisherConn : self.listenerConn;
 				try {
 					connection.channel.close();
@@ -117,7 +117,7 @@ const mSelf = module.exports = {
 			 * @param {object} args - Optional arguments, including "requestId", "replyRequired", and "trace".
 			 * @returns {Promise} - Promise returning the message response, if one is requested.
 			 */
-			this.publish = (address, message, args) => {
+			this.publish = function (address, message, args) {
 				return new Promise((resolve, reject) => {
 					args = args || {};
 					let replyRequired = args.replyRequired;
@@ -193,7 +193,7 @@ const mSelf = module.exports = {
 			 * Consumes a reply from the response queue and calls the callback, if it exists.
 			 * @param {object} message - The message object returned by the listener.
 			 */
-			this.consumeReply = (message) => {
+			this.consumeReply = function (message) {
 				message = message || {};
 				message.properties = message.properties || {};
 
@@ -211,7 +211,7 @@ const mSelf = module.exports = {
 			/**
 			 * Called to begin consuming from the RPC queue associated with this instance.
 			 */
-			this.listenForReplies = () => {
+			this.listenForReplies = function () {
 				return self.publisherConn.channel.consume(self.publisherConn.queue, self.consumeReply, {noAck: true});
 			};
 
@@ -219,7 +219,7 @@ const mSelf = module.exports = {
 			 * Called to resolve the name of the callback queue for this instance.
 			 * @param {object} options - The queue data passed from the instance options.
 			 */
-			this.resolveCallbackQueue = (options) => {
+			this.resolveCallbackQueue = function (options) {
 				options = _.defaults({}, options, {
 					prefix: 'postmaster',
 					separator: '.'
@@ -235,7 +235,7 @@ const mSelf = module.exports = {
 			/**
 			 * Called to bind a new listener to the queue.
 			 */
-			this.addListener = (address, callback) => {
+			this.addListener = function (address, callback) {
 				let topic = self.resolveTopic(address);
 				return self.listenerConn.channel.bindQueue(self.listenerConn.queue, self.listenerConn.exchange, topic)
 					.then(() => {
@@ -246,7 +246,7 @@ const mSelf = module.exports = {
 			/**
 			 * Called to process a message when it's received.
 			 */
-			this.handleMessage = (message, data) => {
+			this.handleMessage = function (message, data) {
 				return self.listenerConn.callMap[message.fields.routingKey](data, (error, out) => {
 					if (error) {
 						console.error(`Error processing message. message='${JSON.stringify(message)}' error='${error.message}'`);
@@ -265,7 +265,7 @@ const mSelf = module.exports = {
 			/**
 			 * Called upon receipt of a new message.
 			 */
-			this.consume = (message) => {
+			this.consume = function (message) {
 				let content = message.content ? message.content.toString() : undefined;
 				if (!content) {
 					// Do not requeue message if there is no payload
@@ -279,7 +279,7 @@ const mSelf = module.exports = {
 			/**
 			 * Called to set the listener to listening.
 			 */
-			this.listenForMessages = () => {
+			this.listenForMessages = function () {
 				return self.listenerConn.channel.consume(self.listenerConn.queue, self.consume);
 			};
 
@@ -295,7 +295,7 @@ const mSelf = module.exports = {
 			 * @param  {amqplib.Channel} channel Queue and exchange will be declared on this channel.
 			 * @return {Promise}         Resolves when the exchange, queue and binding are created.
 			 */
-			this.declareDeadLetter = (channel) => {
+			this.declareDeadLetter = function (channel) {
 				let options = self.options.deadLetter;
 				return Promise.try(() => {
 					if (channel && options.queue && options.exchange) {
@@ -323,7 +323,7 @@ const mSelf = module.exports = {
 			 * Called to resolve the AMQP topic corresponding to an address.
 			 * @param {string} address
 			 */
-			this.resolveTopic = (address) => {
+			this.resolveTopic = function (address) {
 				return address.replace(':', '.');
 			};
 		}
