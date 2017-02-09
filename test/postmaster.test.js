@@ -19,22 +19,22 @@ chai.should();
 chai.use(dirtyChai);
 chai.use(sinonChai);
 
-describe('utility functions', () => {
+describe('utility functions', function () {
 	let postmaster;
 
-	before(() => {
+	before(function () {
 		postmaster = new postmasterGeneral.PostmasterGeneral('testqueue1');
 	});
 
-	describe('resolveCallbackQueue()', () => {
-		it('should use default prefix and separator if no options are provided', () => {
+	describe('resolveCallbackQueue()', function () {
+		it('should use default prefix and separator if no options are provided', function () {
 			let queue = postmaster.resolveCallbackQueue();
 
 			// queue name should contain default prefix 'postmaster' and separator '.'
 			queue.should.contain('postmaster.');
 		});
 
-		it('should use custom prefix', () => {
+		it('should use custom prefix', function () {
 			let options = {
 				prefix: 'myprefix'
 			};
@@ -43,7 +43,7 @@ describe('utility functions', () => {
 			queue.should.contain('myprefix.');
 		});
 
-		it('should use custom separator', () => {
+		it('should use custom separator', function () {
 			let options = {
 				separator: '|'
 			};
@@ -52,7 +52,7 @@ describe('utility functions', () => {
 			queue.should.contain('postmaster|');
 		});
 
-		it('should use custom prefix and separator', () => {
+		it('should use custom prefix and separator', function () {
 			let options = {
 				prefix: 'myprefix',
 				separator: '|'
@@ -66,19 +66,19 @@ describe('utility functions', () => {
 	/**
 	 * Function: resolveTopic()
 	 */
-	describe('resolveTopic()', () => {
-		it('should use a topic name starting with the action prefix', () => {
+	describe('resolveTopic()', function () {
+		it('should use a topic name starting with the action prefix', function () {
 			let topic = postmaster.resolveTopic('role:create');
 			topic.should.contain('role.');
 		});
 	});
 });
 
-describe('publisher functions', () => {
+describe('publisher functions', function () {
 	let postmaster;
 	let sandbox;
 
-	before(() => {
+	before(function () {
 		postmaster = new postmasterGeneral.PostmasterGeneral('testqueue2');
 		return postmaster.start();
 	});
@@ -87,7 +87,7 @@ describe('publisher functions', () => {
 		sandbox = sinon.sandbox.create();
 	});
 
-	after(() => {
+	after(function () {
 		postmaster.stop();
 	});
 
@@ -95,7 +95,7 @@ describe('publisher functions', () => {
 		sandbox.restore();
 	});
 
-	describe('publish()', () => {
+	describe('publish()', function () {
 		it('should timeout if not response is sent and replyRequired is true', function (done) {
 			// Default timeout is 10 seconds, wait for it.
 			this.timeout(15 * 1000);
@@ -148,7 +148,7 @@ describe('full stack tests', function () {
 	let postmaster;
 	let sandbox;
 
-	before(() => {
+	before(function () {
 		postmaster = new postmasterGeneral.PostmasterGeneral('testqueue3');
 		return postmaster.start();
 	});
@@ -157,7 +157,7 @@ describe('full stack tests', function () {
 		sandbox = sinon.sandbox.create();
 	});
 
-	after(() => {
+	after(function () {
 		postmaster.stop();
 	});
 
