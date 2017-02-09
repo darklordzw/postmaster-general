@@ -132,6 +132,9 @@ const mSelf = module.exports = {
 					// Generate a new request id if none is set.
 					requestId = requestId || uuid.v4();
 
+					// Store the requestId in the arbitrary "messageId" field.
+					options.messageId = requestId;
+
 					if (replyRequired) {
 						// If we want a reply, we need to store the correlation id so we know which handler to call.
 						let correlationId = uuid.v4();
