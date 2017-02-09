@@ -15,17 +15,15 @@ load plugins into Chai. "dirtyChai" just allows assertion properties to
 use function call syntax ("calledOnce()" vs "calledOnce"). It makes them more
 acceptable to the linter. */
 const expect = chai.expect;
-const assert = chai.assert;
 chai.should();
 chai.use(dirtyChai);
 chai.use(sinonChai);
-
 
 describe('utility functions', () => {
 	let postmaster;
 
 	before(() => {
-		postmaster = new postmasterGeneral.PostmasterGeneral();
+		postmaster = new postmasterGeneral.PostmasterGeneral('testqueue1');
 	});
 
 	describe('resolveCallbackQueue()', () => {
@@ -81,7 +79,7 @@ describe('publisher functions', () => {
 	let sandbox;
 
 	before(() => {
-		postmaster = new postmasterGeneral.PostmasterGeneral();
+		postmaster = new postmasterGeneral.PostmasterGeneral('testqueue2');
 		return postmaster.start();
 	});
 
@@ -107,7 +105,7 @@ describe('publisher functions', () => {
 			let spyPublish = sandbox.spy(postmaster.publisherConn.channel, 'publish');
 
 			// publish the message
-			postmaster.publish('role:create', { max: 100, min: 25 }, null, true)
+			postmaster.publish('role:create', {max: 100, min: 25}, {replyRequired: true})
 				.then(() => {
 					done('Should have timed out while waiting on a reply!');
 				})
@@ -129,7 +127,7 @@ describe('publisher functions', () => {
 			let spyPublish = sandbox.spy(postmaster.publisherConn.channel, 'publish');
 
 			// publish the message
-			postmaster.publish('role:create', { max: 100, min: 25 }, null)
+			postmaster.publish('role:create', {max: 100, min: 25})
 				.then(() => {
 					try {
 						spyResolveTopic.should.have.been.calledOnce();
@@ -151,7 +149,7 @@ describe('full stack tests', function () {
 	let sandbox;
 
 	before(() => {
-		postmaster = new postmasterGeneral.PostmasterGeneral();
+		postmaster = new postmasterGeneral.PostmasterGeneral('testqueue3');
 		return postmaster.start();
 	});
 
@@ -173,7 +171,7 @@ describe('full stack tests', function () {
 				greeting: 'Hello, ' + message.name
 			});
 		})
-		.then(() => postmaster.publish('action:get_greeting', {name: 'Steve'}, null, true))
+		.then(() => postmaster.publish('action:get_greeting', {name: 'Steve'}, {replyRequired: true}))
 		.then((res) => {
 			expect(res).to.exist();
 			expect(res.greeting).to.exist();
@@ -187,7 +185,7 @@ describe('full stack tests', function () {
 				greeting: 'Hello, ' + message.name
 			});
 		})
-			.then(() => postmaster.publish('action:get_greeting', {name: 'Steve'}, null))
+			.then(() => postmaster.publish('action:get_greeting', {name: 'Steve'}))
 			.then((res) => {
 				expect(res).to.not.exist();
 			});

@@ -114,23 +114,23 @@ const mSelf = module.exports = {
 			 * Publishes a message to the specified address, optionally returning a callback.
 			 * @param {string} address - The message address.
 			 * @param {object} message - The message data.
-			 * @param {string} requestId - Unique identifier used to trace messages across services. Must be defined.
-			 * @param {boolean} replyRequired - If true, a reply is expected for this message.
+			 * @param {object} args - Optional arguments, including "requestId", "replyRequired", and "trace".
 			 * @returns {Promise} - Promise returning the message response, if one is requested.
 			 */
-			this.publish = (address, message, requestId, replyRequired) => {
+			this.publish = (address, message, args) => {
 				return new Promise((resolve, reject) => {
+					args = args || {};
+					let replyRequired = args.replyRequired;
+					let requestId = args.requestId;
+					let trace = args.trace;
 					let topic = self.resolveTopic(address);
 					let messageString = JSON.stringify(message);
 					let options = {
 						contentType: 'application/json'
 					};
 
-					// RequestId is required, but nullable.
-					if (_.isUndefined(requestId)) {
-						reject('requestId must be provided, or be set to null!');
-						return;
-					}
+					// Generate a new request id if none is set.
+					requestId = requestId || uuid.v4();
 
 					if (replyRequired) {
 						// If we want a reply, we need to store the correlation id so we know which handler to call.
@@ -153,38 +153,37 @@ const mSelf = module.exports = {
 						// If no response is returned, clear the callback and return an error.
 						timeout = setTimeout(() => {
 							delete self.publisherConn.callMap[correlationId];
-							reject(new mSelf.RPCTimeoutError(`postmaster-general timeout while sending message! topic='${topic}' message='${messageString}'`));
+							reject(new mSelf.RPCTimeoutError(`postmaster-general timeout while sending message! topic='${topic}' message='${messageString}' requestId='${requestId}'`));
 						}, self.publisherConn.timeout);
 
 						// Publish the message. If publishing failed, indicate that the channel's write buffer is full.
 						let pubSuccess = self.publisherConn.channel.publish(self.publisherConn.exchange, topic, new Buffer(messageString), options);
 						if (pubSuccess) {
 							if (self.options.logSent) {
-								console.log(`postmaster-general sent message successfully! topic='${topic}' message='${messageString}'`);
+								console.log(`postmaster-general sent message successfully! topic='${topic}' message='${messageString}' requestId='${requestId}'`);
 							}
-							// Log the request, if the tracing request id is passed.
-							if (requestId) {
-								self.publisherConn.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(messageString), { contentType: 'application/json' });
+							if (trace) {
+								self.publisherConn.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(messageString), {contentType: 'application/json'});
 							}
 						} else {
 							timeout.clearTimeout();
 							delete self.publisherConn.callMap[correlationId];
-							reject(new mSelf.PublishBufferFullError(`postmaster-general failed sending message due to full publish buffer! topic='${topic}' message='${messageString}'`));
+							reject(new mSelf.PublishBufferFullError(`postmaster-general failed sending message due to full publish buffer! topic='${topic}' message='${messageString}' requestId='${requestId}'`));
 						}
 					} else {
 						// if no callback is requested, simply publish the message.
 						let pubSuccess = self.publisherConn.channel.publish(self.publisherConn.exchange, topic, new Buffer(messageString), options);
 						if (pubSuccess) {
 							if (self.options.logSent) {
-								console.log(`postmaster-general sent message successfully! topic='${topic}' message='${messageString}'`);
+								console.log(`postmaster-general sent message successfully! topic='${topic}' message='${messageString}' requestId='${requestId}'`);
 							}
 							// Log the request, if the tracing request id is passed.
-							if (requestId) {
-								self.publisherConn.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(messageString), { contentType: 'application/json' });
+							if (trace) {
+								self.publisherConn.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(messageString), {contentType: 'application/json'});
 							}
 							resolve();
 						} else {
-							reject(new mSelf.PublishBufferFullError(`postmaster-general failed sending message due to full publish buffer! topic='${topic}' message='${messageString}'`));
+							reject(new mSelf.PublishBufferFullError(`postmaster-general failed sending message due to full publish buffer! topic='${topic}' message='${messageString}' requestId='${requestId}'`));
 						}
 					}
 				});
@@ -293,7 +292,6 @@ const mSelf = module.exports = {
 			 * `options` and binds them with '#' as
 			 * routing key.
 			 *
-			 * @param  {Objet} options   Configuration for the dead-letter queue and exchange.
 			 * @param  {amqplib.Channel} channel Queue and exchange will be declared on this channel.
 			 * @return {Promise}         Resolves when the exchange, queue and binding are created.
 			 */

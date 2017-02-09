@@ -31,9 +31,9 @@ postmaster.start()
 		});
 	}))
 	// Publish a fire-and-forget message.
-	.then(() => postmaster.publish('action:get_greeting', {name: 'Bob'}, null))
+	.then(() => postmaster.publish('action:get_greeting', {name: 'Bob'}))
 	// Publish a message with a callback.
-	.then(() => postmaster.publish('action:get_greeting', {name: 'Steve'}, null, true))
+	.then(() => postmaster.publish('action:get_greeting', {name: 'Steve'}, {replyRequired: true}))
 	// Handle the callback.
 	.then((res) => {
 		console.log(res.greeting);
