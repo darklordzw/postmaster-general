@@ -261,6 +261,11 @@ const mSelf = module.exports = {
 				data.$requestId = message.properties.headers.requestId;
 				data.$trace = message.properties.headers.trace;
 
+				// If we don't have a handler, just re-queue it.
+				if (!self.listenerConn.callMap[message.fields.routingKey]) {
+					return self.listenerConn.channel.nack(message, false);
+				}
+
 				return self.listenerConn.callMap[message.fields.routingKey](data, (error, out) => {
 					if (error) {
 						console.error(`Error processing message. message='${JSON.stringify(message)}' error='${error.message}'`);
