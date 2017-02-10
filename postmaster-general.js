@@ -270,6 +270,9 @@ const mSelf = module.exports = {
 							correlationId: message.properties.correlationId,
 							headers: message.properties.headers
 						});
+						if (self.options.logSent) {
+							console.log(`postmaster-general sent reply! message='${JSON.stringify(out)}' requestId='${message.properties.headers.requestId}'`);
+						}
 						self.listenerConn.channel.ack(message);
 					} else {
 						self.listenerConn.channel.ack(message);
