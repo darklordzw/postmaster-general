@@ -7,6 +7,7 @@ const dirtyChai = require('dirty-chai');
 const sinon = require('sinon');
 require('sinon-bluebird');
 const sinonChai = require('sinon-chai');
+const uuid = require('uuid');
 const postmasterGeneral = require('../postmaster-general');
 
 /* This sets up the Chai assertion library. "should" and "expect"
@@ -23,7 +24,7 @@ describe('utility functions', function () {
 	let postmaster;
 
 	before(function () {
-		postmaster = new postmasterGeneral.PostmasterGeneral('testqueue1');
+		postmaster = new postmasterGeneral.PostmasterGeneral(uuid.v4());
 	});
 
 	describe('resolveCallbackQueue()', function () {
@@ -79,7 +80,7 @@ describe('publisher functions', function () {
 	let sandbox;
 
 	before(function () {
-		postmaster = new postmasterGeneral.PostmasterGeneral('testqueue2');
+		postmaster = new postmasterGeneral.PostmasterGeneral(uuid.v4());
 		return postmaster.start();
 	});
 
@@ -149,7 +150,7 @@ describe('full stack tests', function () {
 	let sandbox;
 
 	before(function () {
-		postmaster = new postmasterGeneral.PostmasterGeneral('testqueue3');
+		postmaster = new postmasterGeneral.PostmasterGeneral(uuid.v4());
 		return postmaster.start();
 	});
 
@@ -214,6 +215,46 @@ describe('full stack tests', function () {
 				res.$requestId.should.equal('testId');
 				expect(res.$trace).to.exist();
 				res.$trace.should.equal(true);
+			});
+	});
+
+	it('should allow * matches in listener routes', function () {
+		// Default timeout is 10 seconds, wait for it.
+		this.timeout(15 * 1000);
+
+		return postmaster.addListener('log:*', function (message, cb) {
+			return cb(null, {
+				greeting: 'Hello, ' + message.name
+			});
+		})
+			// Test match
+			.then(() => postmaster.publish('log:mytest', {name: 'Steve'}, {replyRequired: true}))
+			.then((res) => {
+				expect(res).to.exist();
+				expect(res.greeting).to.exist();
+				res.greeting.should.equal('Hello, Steve');
+			})
+			// Test mismatch
+			.then(() => {
+				return postmaster.publish('log:mytest.another:test', {name: 'Steve'}, {replyRequired: true})
+					.then(() => {
+						return Promise.reject('Invalid match!');
+					})
+					.catch(() => {});
+			});
+	});
+
+	it('should allow # matches in listener routes', function () {
+		return postmaster.addListener('log:#', function (message, cb) {
+			return cb(null, {
+				greeting: 'Hello, ' + message.name
+			});
+		})
+			.then(() => postmaster.publish('log:mytest.anotherthing:test', {name: 'Steve'}, {replyRequired: true}))
+			.then((res) => {
+				expect(res).to.exist();
+				expect(res.greeting).to.exist();
+				res.greeting.should.equal('Hello, Steve');
 			});
 	});
 });

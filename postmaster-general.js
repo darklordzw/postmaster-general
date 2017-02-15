@@ -247,6 +247,19 @@ const mSelf = module.exports = {
 			 */
 			this.addListener = function (address, callback) {
 				let topic = self.resolveTopic(address);
+
+				// If this topic is a regular expression pre-compile it for faster comparison later.
+				if (topic.includes('*') || topic.includes('#')) {
+					let regExpStr = topic.replace('.', '\\.');
+					// In AMPQ, '*' matches a single word...
+					regExpStr = topic.replace('*', '[^.]+');
+					// ...while '#' matches 0 or more words
+					regExpStr = topic.replace('#', '.*');
+					self.listenerConn.regexMap = self.listenerConn.regexMap || [];
+					self.listenerConn.regexMap.push({regex: new RegExp(regExpStr), topic: topic});
+				}
+
+				// Wildcards in AMQP work differently than standard regex, '#' effectively corresponds to '*'.
 				return self.listenerConn.channel.bindQueue(self.listenerConn.queue, self.listenerConn.exchange, topic)
 					.then(() => {
 						self.listenerConn.callMap[topic] = callback;
@@ -261,12 +274,27 @@ const mSelf = module.exports = {
 				data.$requestId = message.properties.headers.requestId;
 				data.$trace = message.properties.headers.trace;
 
+				// Find the callback, either by direct match or regex.
+				let routingKey = message.fields.routingKey;
+				let callMapKey;
+				if (self.listenerConn.callMap[routingKey]) {
+					callMapKey = routingKey;
+				} else if (self.listenerConn.regexMap) {
+					let regexMap = self.listenerConn.regexMap;
+					let mapping;
+					for (mapping of regexMap) {
+						if (mapping.regex.test(routingKey)) {
+							callMapKey = mapping.topic;
+						}
+					}
+				}
+
 				// If we don't have a handler, just re-queue it.
-				if (!self.listenerConn.callMap[message.fields.routingKey]) {
+				if (!callMapKey) {
 					return self.listenerConn.channel.nack(message, false);
 				}
 
-				return self.listenerConn.callMap[message.fields.routingKey](data, (error, out) => {
+				return self.listenerConn.callMap[callMapKey](data, (error, out) => {
 					if (error) {
 						console.error(`Error processing message. message='${JSON.stringify(message)}' error='${error.message}'`);
 						return self.listenerConn.channel.nack(message, false, false);
@@ -291,8 +319,7 @@ const mSelf = module.exports = {
 			this.consume = function (message) {
 				let content = message.content ? message.content.toString() : undefined;
 				if (!content) {
-					// Do not requeue message if there is no payload
-					// or we don't know where to reply
+					// Do not requeue message if there is no payload.
 					return self.listenerConn.channel.nack(message, false, false);
 				}
 				let data = JSON.parse(content);
