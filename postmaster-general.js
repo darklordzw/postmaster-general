@@ -290,7 +290,7 @@ const mSelf = module.exports = {
 				}
 
 				// If we don't have a handler, just re-queue it.
-				if (!callMapKey) {
+				if (!callMapKey || !self.listenerConn.callMap[callMapKey]) {
 					return self.listenerConn.channel.nack(message, false);
 				}
 
