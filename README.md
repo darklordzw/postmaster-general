@@ -38,8 +38,11 @@ postmaster.start()
 	.then((res) => {
 		console.log(res.greeting);
 	});
-
 ```
+
+### Wildcards
+postmaster-general supports the [default AMQP wildcards for topic routes][4].
+
 
 ## License
 Licensed under the [MIT][2] license.
@@ -47,3 +50,4 @@ Licensed under the [MIT][2] license.
 [1]: https://www.amqp.org/ 
 [2]: ./LICENSE.md
 [3]: https://github.com/senecajs/seneca-amqp-transport/
+[4]: https://www.rabbitmq.com/tutorials/tutorial-five-python.html
