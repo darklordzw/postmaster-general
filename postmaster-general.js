@@ -164,7 +164,10 @@ const mSelf = module.exports = {
 								console.log(`postmaster-general sent message successfully! topic='${topic}' message='${messageString}' requestId='${requestId}'`);
 							}
 							if (trace) {
-								self.publisherConn.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(messageString), {contentType: 'application/json'});
+								let traceMessage = JSON.parse(messageString);
+								traceMessage.sentAt = new Date();
+								traceMessage.address = address;
+								self.publisherConn.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(JSON.stringify(traceMessage)), {contentType: 'application/json'});
 							}
 						} else {
 							timeout.clearTimeout();
@@ -180,7 +183,10 @@ const mSelf = module.exports = {
 							}
 							// Log the request, if the tracing request id is passed.
 							if (trace) {
-								self.publisherConn.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(messageString), {contentType: 'application/json'});
+								let traceMessage = JSON.parse(messageString);
+								traceMessage.sentAt = new Date();
+								traceMessage.address = address;
+								self.publisherConn.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(JSON.stringify(traceMessage)), {contentType: 'application/json'});
 							}
 							resolve();
 						} else {
@@ -299,12 +305,21 @@ const mSelf = module.exports = {
 						console.error(`Error processing message. message='${JSON.stringify(message)}' error='${error.message}'`);
 						return self.listenerConn.channel.nack(message, false, false);
 					} else if (out && message.properties.replyTo) {
-						self.listenerConn.channel.sendToQueue(message.properties.replyTo, new Buffer(JSON.stringify(out)), {
+						let outMessage = JSON.stringify(out);
+						self.listenerConn.channel.sendToQueue(message.properties.replyTo, new Buffer(outMessage), {
 							correlationId: message.properties.correlationId,
 							headers: message.properties.headers
 						});
 						if (self.options.logSent) {
-							console.log(`postmaster-general sent reply! message='${JSON.stringify(out)}' requestId='${message.properties.headers.requestId}'`);
+							console.log(`postmaster-general sent reply! message='${outMessage}' requestId='${message.properties.headers.requestId}'`);
+						}
+						if (message.properties.headers.trace) {
+							let requestId = message.properties.headers.requestId || 'default';
+							let traceMessage = JSON.parse(outMessage);
+							traceMessage.sentAt = new Date();
+							traceMessage.replyTo = message.properties.replyTo;
+							traceMessage.correlationId = message.properties.correlationId;
+							self.publisherConn.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(JSON.stringify(traceMessage)), {contentType: 'application/json'});
 						}
 						self.listenerConn.channel.ack(message);
 					} else {
