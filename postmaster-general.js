@@ -167,7 +167,12 @@ const mSelf = module.exports = {
 								let traceMessage = JSON.parse(messageString);
 								traceMessage.sentAt = new Date();
 								traceMessage.address = address;
-								self.publisherConn.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(JSON.stringify(traceMessage)), {contentType: 'application/json'});
+								self.publisherConn.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(JSON.stringify(traceMessage)), {
+									contentType: 'application/json',
+									headers: {
+										requestId: requestId
+									}
+								});
 							}
 						} else {
 							timeout.clearTimeout();
@@ -186,7 +191,12 @@ const mSelf = module.exports = {
 								let traceMessage = JSON.parse(messageString);
 								traceMessage.sentAt = new Date();
 								traceMessage.address = address;
-								self.publisherConn.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(JSON.stringify(traceMessage)), {contentType: 'application/json'});
+								self.publisherConn.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(JSON.stringify(traceMessage)), {
+									contentType: 'application/json',
+									headers: {
+										requestId: requestId
+									}
+								});
 							}
 							resolve();
 						} else {
@@ -319,7 +329,12 @@ const mSelf = module.exports = {
 							traceMessage.sentAt = new Date();
 							traceMessage.replyTo = message.properties.replyTo;
 							traceMessage.correlationId = message.properties.correlationId;
-							self.publisherConn.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(JSON.stringify(traceMessage)), {contentType: 'application/json'});
+							self.publisherConn.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(JSON.stringify(traceMessage)), {
+								contentType: 'application/json',
+								headers: {
+									requestId: requestId
+								}
+							});
 						}
 						self.listenerConn.channel.ack(message);
 					} else {
