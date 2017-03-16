@@ -20,14 +20,14 @@ chai.should();
 chai.use(dirtyChai);
 chai.use(sinonChai);
 
-describe('utility functions', function () {
+describe('utility functions:', function () {
 	let postmaster;
 
 	before(function () {
 		postmaster = new postmasterGeneral.PostmasterGeneral(uuid.v4());
 	});
 
-	describe('resolveCallbackQueue()', function () {
+	describe('resolveCallbackQueue:', function () {
 		it('should use default prefix and separator if no options are provided', function () {
 			let queue = postmaster.resolveCallbackQueue();
 
@@ -67,7 +67,7 @@ describe('utility functions', function () {
 	/**
 	 * Function: resolveTopic()
 	 */
-	describe('resolveTopic()', function () {
+	describe('resolveTopic:', function () {
 		it('should use a topic name starting with the action prefix', function () {
 			let topic = postmaster.resolveTopic('role:create');
 			topic.should.contain('role.');
@@ -75,7 +75,7 @@ describe('utility functions', function () {
 	});
 });
 
-describe('publisher functions', function () {
+describe('publisher functions:', function () {
 	let postmaster;
 	let sandbox;
 
@@ -89,14 +89,14 @@ describe('publisher functions', function () {
 	});
 
 	after(function () {
-		return postmaster.stop();
+		postmaster.stop();
 	});
 
 	afterEach(function () {
 		sandbox.restore();
 	});
 
-	describe('publish()', function () {
+	describe('publish:', function () {
 		it('should timeout if not response is sent and replyRequired is true', function (done) {
 			// Default timeout is 10 seconds, wait for it.
 			this.timeout(15 * 1000);
@@ -145,7 +145,7 @@ describe('publisher functions', function () {
 	});
 });
 
-describe('full stack tests', function () {
+describe('full stack tests:', function () {
 	let postmaster;
 	let sandbox;
 
@@ -159,7 +159,7 @@ describe('full stack tests', function () {
 	});
 
 	after(function () {
-		return postmaster.stop();
+		postmaster.stop();
 	});
 
 	afterEach(function () {
@@ -256,5 +256,31 @@ describe('full stack tests', function () {
 				expect(res.greeting).to.exist();
 				res.greeting.should.equal('Hello, Steve');
 			});
+	});
+
+	it('should resolve to true if the health check is passed', function () {
+		return postmaster.healthCheck()
+			.then((res) => {
+				expect(res).to.exist();
+				res.should.equal(true);
+			});
+	});
+
+	it('should reject if the listener is unhealthy', function () {
+		postmaster.listenerConn.queue = 'bad queue';
+		return postmaster.healthCheck()
+			.then(() => {
+				return Promise.reject('Should have failed health check');
+			})
+			.catch(() => {});
+	});
+
+	it('should reject if the publisher is unhealthy', function () {
+		postmaster.publisherConn.queue = 'bad queue';
+		return postmaster.healthCheck()
+			.then(() => {
+				return Promise.reject('Should have failed health check');
+			})
+			.catch(() => {});
 	});
 });

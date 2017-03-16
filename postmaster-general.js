@@ -6,6 +6,7 @@
  *
  * @module postmaster-general
  */
+const domain = require('domain'); // eslint-disable-line no-restricted-modules
 const _ = require('lodash');
 const amqp = require('amqplib');
 const Promise = require('bluebird');
@@ -24,11 +25,22 @@ const mSelf = module.exports = {
 			this.options.listener.name = queueName;
 			this.publisherConn = {};
 			this.listenerConn = {};
+			this.shuttingDown = false;
 
 			// Because this class makes heavy use of promises and callbacks, it's
 			// easy for the 'this' context to get lost in member functions. To fix this,
 			// and to make the context more clear, use 'self' reference within member methods.
 			let self = this;
+
+			// amqplib uses emitters for channel errors. We need to bind those to a domain
+			// in order to properly handle them.
+			this.dom = domain.create();
+			this.dom.on('error', (err) => {
+				console.error(err.message);
+				if (!self.shuttingDown) {
+					self.stop();
+				}
+			});
 
 			/**
 			 * Called to start the PostmasterGeneral instance.
@@ -55,10 +67,9 @@ const mSelf = module.exports = {
 			 * Called to stop the PostmasterGeneral instance.
 			 */
 			this.stop = function () {
-				return Promise.all([
-					self.close('publisher'),
-					self.close('listener')
-				]);
+				this.shuttingDown = true;
+				self.close('publisher');
+				self.close('listener');
 			};
 
 			/**
@@ -70,8 +81,12 @@ const mSelf = module.exports = {
 				console.log(`Connecting ${connectionType} to AMQP host ${self.options.url}`);
 				let queueOptions = self.options[connectionType];
 				return amqp.connect(self.options.url, self.options.socketOptions)
-					.then((conn) => conn.createChannel())
+					.then((conn) => {
+						self.dom.add(conn);
+						return conn.createChannel();
+					})
 					.then((channel) => {
+						self.dom.add(channel);
 						let ex = self.options.exchange;
 						let queue = queueOptions.queue;
 						let queueName = connectionType === 'publisher' ? self.resolveCallbackQueue(queue) : _.trim(queueOptions.name);
@@ -100,7 +115,34 @@ const mSelf = module.exports = {
 			 */
 			this.close = function (connectionType) {
 				let connection = connectionType === 'publisher' ? self.publisherConn : self.listenerConn;
-				return connection.channel.connection.close();
+
+				console.log(`Closing ${connectionType} connection.`);
+				try {
+					connection.channel.connection.close();
+				} catch (err) {
+					console.error(`Encountered error while closing ${connectionType} connection: ${err.message}`);
+				}
+			};
+
+			/**
+			 * Checks the health of the connection.
+			 * @param {string} connectionType - Either "publisher" or "listener".
+			 * @returns {Promise} - A promise that resolves to true, if postmaster is healthy.
+			 */
+			this.healthCheck = function () {
+				let publisherChannel = self.publisherConn.channel;
+				let listenerChannel = self.listenerConn.channel;
+
+				// Simple health check just verifies both the incoming and outgoing queues.
+				// The promises will reject if either channel is invalidated, or if the queues don't exist.
+				return publisherChannel.checkQueue(self.publisherConn.queue)
+					.then(() => listenerChannel.checkQueue(self.listenerConn.queue))
+					.then(() => {
+						return true;
+					})
+					.catch((err) => {
+						throw new mSelf.ConnectionFailedError(err.message);
+					});
 			};
 
 			// #region Publisher
@@ -437,6 +479,17 @@ const mSelf = module.exports = {
 	 * Error sent when the rpc response sends back an invalid response.
 	 */
 	InvalidRPCResponseError: class extends Error {
+		constructor(message) {
+			super(message);
+			Error.captureStackTrace(this, this.constructor);
+			this.name = this.constructor.name;
+		}
+	},
+
+	/**
+	 * Error generated as the result of a failed health check.
+	 */
+	ConnectionFailedError: class extends Error {
 		constructor(message) {
 			super(message);
 			Error.captureStackTrace(this, this.constructor);
