@@ -67,7 +67,7 @@ const mSelf = module.exports = {
 			 * Called to stop the PostmasterGeneral instance.
 			 */
 			this.stop = function () {
-				this.shuttingDown = true;
+				self.shuttingDown = true;
 				self.close('publisher');
 				self.close('listener');
 			};
