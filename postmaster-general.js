@@ -21,8 +21,10 @@ const mSelf = module.exports = {
 		 * @param {object} options
 		 */
 		constructor(queueName, options) {
-			this.options = _.defaults({}, options, defaults);
+			options = options || {};
+			this.options = defaults;
 			this.options.listener.name = queueName;
+			this.options.listener.queue.options.durable = options.durable || this.options.listener.queue.options.durable;
 			this.publisherConn = {};
 			this.listenerConn = {};
 			this.shuttingDown = false;
