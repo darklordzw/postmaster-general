@@ -314,13 +314,31 @@ const mSelf = module.exports = {
 					// ...while '#' matches 0 or more words
 					regExpStr = topic.replace('#', '.*');
 					self.listenerConn.regexMap = self.listenerConn.regexMap || [];
-					self.listenerConn.regexMap.push({regex: new RegExp(regExpStr), topic: topic});
+
+					// Search the regexMap to make sure we don't introduce duplicates.
+					let exists = self.listenerConn.regexMap.find((element) => {
+						return element.topic === topic;
+					});
+					if (!exists) {
+						self.listenerConn.regexMap.push({regex: new RegExp(regExpStr), topic: topic});
+					}
 				}
 
 				// Wildcards in AMQP work differently than standard regex, '#' effectively corresponds to '*'.
 				return self.listenerConn.channel.bindQueue(self.listenerConn.queue, self.listenerConn.exchange, topic)
 					.then(() => {
 						self.listenerConn.callMap[topic] = callback;
+					});
+			};
+
+			/**
+			 * Called to unbind a new listener from the queue.
+			 */
+			this.removeListener = function (address) {
+				let topic = self.resolveTopic(address);
+				return self.listenerConn.channel.unbindQueue(self.listenerConn.queue, self.listenerConn.exchange, topic)
+					.then(() => {
+						delete self.listenerConn.callMap[topic];
 					});
 			};
 

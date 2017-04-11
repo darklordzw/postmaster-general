@@ -166,6 +166,34 @@ describe('full stack tests:', function () {
 		sandbox.restore();
 	});
 
+	it('should not add duplicates to the regex map', function () {
+		return postmaster.addListener('action:get_greeting:*', function (message, cb) {
+			return cb(null, {greeting: 'Hello, ' + message.name});
+		})
+			.then(() => {
+				postmaster.listenerConn.regexMap.length.should.equal(1);
+			})
+			.then(() => postmaster.addListener('action:get_greeting:*', function (message, cb) {
+				return cb(null, {greeting: 'Hello, ' + message.name});
+			}))
+			.then(() => {
+				postmaster.listenerConn.regexMap.length.should.equal(1);
+			});
+	});
+
+	it('should allow removing listeners', function () {
+		return postmaster.addListener('action:get_greeting:*', function (message, cb) {
+			return cb(null, {greeting: 'Hello, ' + message.name});
+		})
+			.then(() => {
+				Object.keys(postmaster.listenerConn.callMap).length.should.equal(1);
+			})
+			.then(() => postmaster.removeListener('action:get_greeting:*'))
+			.then(() => {
+				Object.keys(postmaster.listenerConn.callMap).length.should.equal(0);
+			});
+	});
+
 	it('should handle rpc', function () {
 		return postmaster.addListener('action:get_greeting', function (message, cb) {
 			return cb(null, {
