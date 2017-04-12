@@ -31,6 +31,11 @@ const mSelf = module.exports = {
 			this.listenerConn = {};
 			this.shuttingDown = false;
 
+			// If we're not using durable queues, go ahead and default to auto-delete.
+			if (!this.options.listener.queue.options.durable) {
+				this.options.listener.queue.options.autoDelete = true;
+			}
+
 			// Because this class makes heavy use of promises and callbacks, it's
 			// easy for the 'this' context to get lost in member functions. To fix this,
 			// and to make the context more clear, use 'self' reference within member methods.
