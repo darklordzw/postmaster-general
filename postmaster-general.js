@@ -25,15 +25,16 @@ const mSelf = module.exports = {
 			this.options = defaults;
 			this.options.listener.name = queueName;
 			this.options.url = options.url || this.options.url;
-			this.options.listener.queue.options.durable = options.durable === undefined ? this.options.listener.queue.options.durable : options.durable;
+			this.options.listener.queue.options.autoDelete = options.autoDelete;
 			this.options.logSent = options.logSent === undefined ? this.options.logSent : options.logSent;
 			this.publisherConn = {};
 			this.listenerConn = {};
 			this.shuttingDown = false;
 
-			// If we're not using durable queues, go ahead and default to auto-delete.
-			if (!this.options.listener.queue.options.durable) {
-				this.options.listener.queue.options.autoDelete = true;
+			// If queues should auto-delete, make sure they're exclusive and not durable.
+			if (this.options.listener.queue.options.autoDelete) {
+				this.options.listener.queue.options.durable = false;
+				this.options.listener.queue.options.exclusive = true;
 			}
 
 			// Because this class makes heavy use of promises and callbacks, it's
