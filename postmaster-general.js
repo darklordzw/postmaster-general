@@ -24,7 +24,9 @@ const mSelf = module.exports = {
 			options = options || {};
 			this.options = defaults;
 			this.options.listener.name = queueName;
+			this.options.url = options.url || this.options.url;
 			this.options.listener.queue.options.durable = options.durable || this.options.listener.queue.options.durable;
+			this.options.logSent = options.logSent || this.options.logSent;
 			this.publisherConn = {};
 			this.listenerConn = {};
 			this.shuttingDown = false;
