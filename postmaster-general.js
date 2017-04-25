@@ -318,11 +318,11 @@ const mSelf = module.exports = {
 
 				// If this topic is a regular expression pre-compile it for faster comparison later.
 				if (topic.includes('*') || topic.includes('#')) {
-					let regExpStr = topic.replace('.', '\\.');
+					let regExpStr = topic.replace(/\./g, '\\.');
 					// In AMPQ, '*' matches a single word...
-					regExpStr = topic.replace('*', '[^.]+');
+					regExpStr = topic.replace(/\*/g, '[^.]+');
 					// ...while '#' matches 0 or more words
-					regExpStr = topic.replace('#', '.*');
+					regExpStr = topic.replace(/#/g, '.*');
 					self.listenerConn.regexMap = self.listenerConn.regexMap || [];
 
 					// Search the regexMap to make sure we don't introduce duplicates.
@@ -474,7 +474,7 @@ const mSelf = module.exports = {
 			 * @param {string} address
 			 */
 			this.resolveTopic = function (address) {
-				return address.replace(':', '.');
+				return address.replace(/:/g, '.');
 			};
 		}
 	},

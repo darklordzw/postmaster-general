@@ -166,6 +166,16 @@ describe('full stack tests:', function () {
 		sandbox.restore();
 	});
 
+	it('should correctly escape listeners', function () {
+		return postmaster.addListener('action:get_greeting:*', function (message, cb) {
+			return cb(null, {greeting: 'Hello, ' + message.name});
+		})
+			.then(() => {
+				postmaster.listenerConn.regexMap.length.should.equal(1);
+				postmaster.listenerConn.regexMap[0].topic.should.equal('action.get_greeting.*');
+			});
+	});
+
 	it('should not add duplicates to the regex map', function () {
 		return postmaster.addListener('action:get_greeting:*', function (message, cb) {
 			return cb(null, {greeting: 'Hello, ' + message.name});
