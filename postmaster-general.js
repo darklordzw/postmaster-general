@@ -272,11 +272,15 @@ const mSelf = module.exports = {
 					let content = message.content ? message.content.toString() : undefined;
 					// If there's no content in the response, indicate error
 					if (content) {
-						content = JSON.parse(content);
-						// Add special fields for logging.
-						content.$requestId = message.properties.headers.requestId;
-						content.$trace = message.properties.headers.trace;
-						self.publisherConn.callMap[correlationId](null, content);
+						try {
+							content = JSON.parse(content);
+							// Add special fields for logging.
+							content.$requestId = message.properties.headers.requestId;
+							content.$trace = message.properties.headers.trace;
+							self.publisherConn.callMap[correlationId](null, content);
+						} catch (err) {
+							self.publisherConn.callMap[correlationId](new mSelf.InvalidRPCResponseError(`Invalid response received for call with correlationId ${correlationId}. Could not parse as JSON.`));
+						}
 					} else {
 						self.publisherConn.callMap[correlationId](new mSelf.InvalidRPCResponseError(`Invalid response received for call with correlationId ${correlationId}`));
 					}
@@ -422,7 +426,12 @@ const mSelf = module.exports = {
 					// Do not requeue message if there is no payload.
 					return self.listenerConn.channel.nack(message, false, false);
 				}
-				let data = JSON.parse(content);
+				let data;
+				try {
+					data = JSON.parse(content);
+				} catch (err) {
+					data = {};
+				}
 				return self.handleMessage(message, data);
 			};
 
