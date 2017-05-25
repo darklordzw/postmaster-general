@@ -11,6 +11,7 @@ const _ = require('lodash');
 const amqp = require('amqplib');
 const Promise = require('bluebird');
 const uuid = require('uuid');
+const bunyan = require('bunyan');
 const defaults = require('./defaults');
 
 const mSelf = module.exports = {
@@ -26,7 +27,8 @@ const mSelf = module.exports = {
 			this.options.listener.name = queueName;
 			this.options.url = options.url || this.options.url;
 			this.options.listener.queue.options.autoDelete = options.autoDelete;
-			this.options.logSent = options.logSent === undefined ? this.options.logSent : options.logSent;
+			this.options.logger = options.logger;
+			this.options.logLevel = options.logLevel;
 			this.publisherConn = {};
 			this.listenerConn = {};
 			this.shuttingDown = false;
@@ -35,6 +37,18 @@ const mSelf = module.exports = {
 			if (this.options.listener.queue.options.autoDelete) {
 				this.options.listener.queue.options.durable = false;
 				this.options.listener.queue.options.exclusive = true;
+			}
+
+			// Postmaster expects loggers to be syntactially-compatible with the excellent Bunyan library.
+			this.logger = this.options.logger;
+			if (!this.logger) {
+				this.logger = bunyan.createLogger({
+					name: 'postmaster-general',
+					serializers: {err: bunyan.stdSerializers.err}
+				});
+
+				// Default log level to info.
+				this.logger.level(this.options.logLevel || 'info');
 			}
 
 			// Because this class makes heavy use of promises and callbacks, it's
@@ -46,7 +60,7 @@ const mSelf = module.exports = {
 			// in order to properly handle them.
 			this.dom = domain.create();
 			this.dom.on('error', (err) => {
-				console.error(err.message);
+				self.logger.error({err: err}, err.message);
 				if (!self.shuttingDown) {
 					self.stop();
 				}
@@ -56,7 +70,7 @@ const mSelf = module.exports = {
 			 * Called to start the PostmasterGeneral instance.
 			 */
 			this.start = function () {
-				console.log('Starting postmaster-general...');
+				self.logger.info('Starting postmaster-general...');
 				return self.connect('publisher')
 					.then((conn) => {
 						self.publisherConn = conn;
@@ -69,7 +83,7 @@ const mSelf = module.exports = {
 					.then(() => self.listenForReplies())
 					.then(() => self.listenForMessages())
 					.then(() => {
-						console.log('postmaster-general started!');
+						self.logger.info('postmaster-general started!');
 					});
 			};
 
@@ -88,7 +102,7 @@ const mSelf = module.exports = {
 			 * @returns {Promise} - Promise callback indicating connection success or failure.
 			 */
 			this.connect = function (connectionType) {
-				console.log(`Connecting ${connectionType} to AMQP host ${self.options.url}`);
+				self.logger.info(`Connecting ${connectionType} to AMQP host ${self.options.url}`);
 				let queueOptions = self.options[connectionType];
 				return amqp.connect(self.options.url, self.options.socketOptions)
 					.then((conn) => {
@@ -107,7 +121,7 @@ const mSelf = module.exports = {
 							queue: channel.assertQueue(queueName, queue.options),
 							timeout: queue.options.arguments['x-message-ttl']
 						}).then((connection) => {
-							console.log(`${connectionType} connected!`);
+							self.logger.info(`${connectionType} connected!`);
 							return {
 								channel: connection.channel,
 								exchange: connection.exchange.exchange,
@@ -126,11 +140,11 @@ const mSelf = module.exports = {
 			this.close = function (connectionType) {
 				let connection = connectionType === 'publisher' ? self.publisherConn : self.listenerConn;
 
-				console.log(`Closing ${connectionType} connection.`);
+				self.logger.info(`Closing ${connectionType} connection.`);
 				try {
 					connection.channel.connection.close();
 				} catch (err) {
-					console.error(`Encountered error while closing ${connectionType} connection: ${err.message}`);
+					self.logger.error({err: err}, `Encountered error while closing ${connectionType} connection!`);
 				}
 			};
 
@@ -212,9 +226,7 @@ const mSelf = module.exports = {
 						// Publish the message. If publishing failed, indicate that the channel's write buffer is full.
 						let pubSuccess = self.publisherConn.channel.publish(self.publisherConn.exchange, topic, new Buffer(messageString), options);
 						if (pubSuccess) {
-							if (self.options.logSent) {
-								console.log(`postmaster-general sent message successfully! topic='${topic}' message='${messageString}' requestId='${requestId}'`);
-							}
+							self.logger.trace({topic: topic, message: message, requestId: requestId}, 'postmaster-general sent message successfully!');
 							if (trace) {
 								let traceMessage = JSON.parse(messageString);
 								traceMessage.sentAt = new Date();
@@ -235,9 +247,7 @@ const mSelf = module.exports = {
 						// if no callback is requested, simply publish the message.
 						let pubSuccess = self.publisherConn.channel.publish(self.publisherConn.exchange, topic, new Buffer(messageString), options);
 						if (pubSuccess) {
-							if (self.options.logSent) {
-								console.log(`postmaster-general sent message successfully! topic='${topic}' message='${messageString}' requestId='${requestId}'`);
-							}
+							self.logger.trace({topic: topic, message: message, requestId: requestId}, 'postmaster-general sent message successfully!');
 							// Log the request, if the tracing request id is passed.
 							if (trace) {
 								let traceMessage = JSON.parse(messageString);
@@ -286,7 +296,7 @@ const mSelf = module.exports = {
 					}
 					delete self.publisherConn.callMap[correlationId];
 				} else {
-					console.warn(`postmaster-general received reply to a request it didn't send! message=${JSON.stringify(message)}`);
+					self.logger.warn({message: message}, 'postmaster-general received reply to a request it didn\'t send!');
 				}
 			};
 
@@ -386,7 +396,7 @@ const mSelf = module.exports = {
 
 				return self.listenerConn.callMap[callMapKey](data, (error, out) => {
 					if (error) {
-						console.error(`Error processing message. message='${JSON.stringify(message)}' error='${error.message}'`);
+						self.logger.error({err: error, message: message}, 'Error processing message.');
 						return self.listenerConn.channel.nack(message, false, false);
 					} else if (out && message.properties.replyTo) {
 						let outMessage = JSON.stringify(out);
@@ -394,9 +404,7 @@ const mSelf = module.exports = {
 							correlationId: message.properties.correlationId,
 							headers: message.properties.headers
 						});
-						if (self.options.logSent) {
-							console.log(`postmaster-general sent reply! message='${outMessage}' requestId='${message.properties.headers.requestId}'`);
-						}
+						self.logger.trace({message: out, requestId: message.properties.headers.requestId}, 'postmaster-general sent reply!');
 						if (message.properties.headers.trace) {
 							let requestId = message.properties.headers.requestId || 'default';
 							let traceMessage = JSON.parse(outMessage);
