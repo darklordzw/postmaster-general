@@ -394,10 +394,12 @@ const mSelf = module.exports = {
 					return self.listenerConn.channel.nack(message, false);
 				}
 
+				// If we get here, we're going to try and process the message. Go ahead and ack.
+				self.listenerConn.channel.ack(message);
+
 				return self.listenerConn.callMap[callMapKey](data, (error, out) => {
 					if (error) {
 						self.logger.error({err: error, message: message}, 'Error processing message.');
-						return self.listenerConn.channel.nack(message, false, false);
 					} else if (out && message.properties.replyTo) {
 						let outMessage = JSON.stringify(out);
 						self.listenerConn.channel.sendToQueue(message.properties.replyTo, new Buffer(outMessage), {
@@ -418,9 +420,6 @@ const mSelf = module.exports = {
 								}
 							});
 						}
-						self.listenerConn.channel.ack(message);
-					} else {
-						self.listenerConn.channel.ack(message);
 					}
 				});
 			};
