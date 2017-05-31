@@ -33,7 +33,7 @@
 				"durable": true,
 				"arguments": {
 					"x-dead-letter-exchange": "postmaster.dlx",
-					"x-message-ttl": 60000
+					"x-message-ttl": 30000
 				}
 			}
 		}
@@ -50,7 +50,7 @@
 				"exclusive": true,
 				"arguments": {
 					"x-dead-letter-exchange": "postmaster.dlx",
-					"x-message-ttl": 10000
+					"x-message-ttl": 60000
 				}
 			}
 		}

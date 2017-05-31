@@ -98,8 +98,8 @@ describe('publisher functions:', function () {
 
 	describe('publish:', function () {
 		it('should timeout if not response is sent and replyRequired is true', function (done) {
-			// Default timeout is 10 seconds, wait for it.
-			this.timeout(15 * 1000);
+			// Default timeout is 60 seconds, wait for it.
+			this.timeout(65 * 1000);
 
 			// Setup spies
 			let spyResolveTopic = sandbox.spy(postmaster, 'resolveTopic');
@@ -257,8 +257,8 @@ describe('full stack tests:', function () {
 	});
 
 	it('should allow * matches in listener routes', function () {
-		// Default timeout is 10 seconds, wait for it.
-		this.timeout(15 * 1000);
+		// Default timeout is 60 seconds, wait for it.
+		this.timeout(65 * 1000);
 
 		return postmaster.addListener('log:*', function (message, cb) {
 			return cb(null, {
