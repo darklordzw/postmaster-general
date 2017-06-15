@@ -36,7 +36,10 @@ const mSelf = module.exports = {
 			// If queues should auto-delete, make sure they're exclusive and not durable.
 			if (this.options.listener.queue.options.autoDelete) {
 				this.options.listener.queue.options.durable = false;
-				this.options.listener.queue.options.exclusive = true;
+
+				if (_.isUndefined(this.options.listener.queue.options.exclusive)) {
+					this.options.listener.queue.options.exclusive = true;
+				}
 			}
 
 			// Postmaster expects loggers to be syntactially-compatible with the excellent Bunyan library.
