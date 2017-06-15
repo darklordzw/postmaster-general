@@ -27,6 +27,7 @@ const mSelf = module.exports = {
 			this.options.listener.name = queueName;
 			this.options.url = options.url || this.options.url;
 			this.options.listener.queue.options.autoDelete = options.autoDelete;
+			this.options.listener.queue.options.exclusive = options.exclusive;
 			this.options.logger = options.logger;
 			this.options.logLevel = options.logLevel;
 			this.publisherConn = {};
