@@ -28,6 +28,7 @@ const mSelf = module.exports = {
 			this.options.url = options.url || this.options.url;
 			this.options.listener.queue.options.autoDelete = options.autoDelete;
 			this.options.listener.queue.options.exclusive = options.exclusive;
+			this.options.listener.channel.prefetch = options.prefetch || this.options.listener.channel.prefetch;
 			this.options.logger = options.logger;
 			this.options.logLevel = options.logLevel;
 			this.publisherConn = {};
@@ -398,9 +399,6 @@ const mSelf = module.exports = {
 					return self.listenerConn.channel.nack(message, false);
 				}
 
-				// If we get here, we're going to try and process the message. Go ahead and ack.
-				self.listenerConn.channel.ack(message);
-
 				return self.listenerConn.callMap[callMapKey](data, (error, out) => {
 					if (error) {
 						self.logger.error({err: error, message: message}, 'Error processing message.');
@@ -425,6 +423,9 @@ const mSelf = module.exports = {
 							});
 						}
 					}
+
+					// If we get here, we're going to try and process the message. Go ahead and ack.
+					self.listenerConn.channel.ack(message);
 				});
 			};
 
