@@ -1,14 +1,6 @@
 {
 	"type": "amqp",
 	"url": "amqp://guest:guest@localhost:5672",
-	"exchange": {
-		"type": "topic",
-		"name": "postmaster.topic",
-		"options": {
-			"durable": true,
-			"autoDelete": false
-		}
-	},
 	"deadLetter": {
 		"queue": {
 			"name": "postmaster.dlq"
@@ -36,6 +28,14 @@
 					"x-message-ttl": 30000
 				}
 			}
+		},
+		"exchange": {
+			"type": "topic",
+			"name": "postmaster.topic",
+			"options": {
+				"durable": true,
+				"autoDelete": false
+			}
 		}
 	},
 	"publisher": {
@@ -52,6 +52,14 @@
 					"x-dead-letter-exchange": "postmaster.dlx",
 					"x-message-ttl": 60000
 				}
+			}
+		},
+		"exchange": {
+			"type": "topic",
+			"name": "postmaster.topic",
+			"options": {
+				"durable": true,
+				"autoDelete": false
 			}
 		}
 	}

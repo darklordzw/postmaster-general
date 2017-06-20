@@ -24,20 +24,22 @@ const mSelf = module.exports = {
 		constructor(queueName, options) {
 			options = options || {};
 			this.options = defaults;
+
+			// Allow full control of each component.
+			this.options.listener = options.listener || this.options.listener;
+			this.options.publisher = options.publisher || this.options.publisher;
+			this.options.deadLetter = options.deadLetter || this.options.deadLetter;
+
+			// Set convenience parameters.
 			this.options.listener.name = queueName;
-			this.options.exchange.name = options.topic || this.options.exchange.topic;
 			this.options.url = options.url || this.options.url;
-			this.options.listener.queue.options.autoDelete = options.autoDelete;
-			this.options.listener.queue.options.exclusive = options.exclusive;
-			this.options.listener.channel.prefetch = options.prefetch || this.options.listener.channel.prefetch;
-			this.options.listener.queue.options.arguments = options.listenerQueueArgs || this.options.listener.queue.options.arguments;
 			this.options.logger = options.logger;
 			this.options.logLevel = options.logLevel;
 			this.publisherConn = {};
 			this.listenerConn = {};
 			this.shuttingDown = false;
 
-			// If queues should auto-delete, make sure they're exclusive and not durable.
+			// If queues should auto-delete, make sure they're exclusive and not durable, unless specified.
 			if (this.options.listener.queue.options.autoDelete) {
 				this.options.listener.queue.options.durable = false;
 
@@ -111,14 +113,14 @@ const mSelf = module.exports = {
 			this.connect = function (connectionType) {
 				self.logger.info(`Connecting ${connectionType} to AMQP host ${self.options.url}`);
 				let queueOptions = self.options[connectionType];
-				return amqp.connect(self.options.url, self.options.socketOptions)
+				return amqp.connect(self.options.url, queueOptions.socketOptions)
 					.then((conn) => {
 						self.dom.add(conn);
 						return conn.createChannel();
 					})
 					.then((channel) => {
 						self.dom.add(channel);
-						let ex = self.options.exchange;
+						let ex = queueOptions.exchange;
 						let queue = queueOptions.queue;
 						let queueName = connectionType === 'publisher' ? self.resolveCallbackQueue(queue) : _.trim(queueOptions.name);
 						channel.prefetch(queueOptions.channel.prefetch);
