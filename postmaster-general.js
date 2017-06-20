@@ -25,6 +25,7 @@ const mSelf = module.exports = {
 			options = options || {};
 			this.options = defaults;
 			this.options.listener.name = queueName;
+			this.options.exchange.topic = options.topic || this.options.exchange.topic;
 			this.options.url = options.url || this.options.url;
 			this.options.listener.queue.options.autoDelete = options.autoDelete;
 			this.options.listener.queue.options.exclusive = options.exclusive;
