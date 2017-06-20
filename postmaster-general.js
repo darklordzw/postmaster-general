@@ -29,6 +29,7 @@ const mSelf = module.exports = {
 			this.options.listener.queue.options.autoDelete = options.autoDelete;
 			this.options.listener.queue.options.exclusive = options.exclusive;
 			this.options.listener.channel.prefetch = options.prefetch || this.options.listener.channel.prefetch;
+			this.options.listener.queue.options.arguments = options.listenerQueueArgs || this.options.listener.queue.options.arguments;
 			this.options.logger = options.logger;
 			this.options.logLevel = options.logLevel;
 			this.publisherConn = {};
