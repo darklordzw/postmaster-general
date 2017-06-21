@@ -103,7 +103,7 @@ describe('publisher functions:', function () {
 
 			// Setup spies
 			let spyResolveTopic = sandbox.spy(postmaster, 'resolveTopic');
-			let spyPublish = sandbox.spy(postmaster.publisherConn.channel, 'publish');
+			let spyPublish = sandbox.spy(postmaster.channel, 'publish');
 
 			// publish the message
 			postmaster.publish('role:create', {max: 100, min: 25}, {replyRequired: true})
@@ -125,7 +125,7 @@ describe('publisher functions:', function () {
 		it('should not wait for a response if replyRequired is not true', function (done) {
 			// Setup spies
 			let spyResolveTopic = sandbox.spy(postmaster, 'resolveTopic');
-			let spyPublish = sandbox.spy(postmaster.publisherConn.channel, 'publish');
+			let spyPublish = sandbox.spy(postmaster.channel, 'publish');
 
 			// publish the message
 			postmaster.publish('role:create', {max: 100, min: 25})
