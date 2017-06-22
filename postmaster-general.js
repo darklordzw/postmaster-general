@@ -225,14 +225,18 @@ const mSelf = module.exports = {
 			this.healthCheck = function () {
 				// Simple health check just verifies both the incoming and outgoing queues.
 				// The promises will reject if either channel is invalidated, or if the queues don't exist.
-				return self.channel.checkQueue(self.publisherConn.queue)
-					.then(() => self.channel.checkQueue(self.listenerConn.queue))
-					.then(() => {
-						return true;
-					})
-					.catch((err) => {
-						throw new mSelf.ConnectionFailedError(err.message);
-					});
+				try {
+					return self.channel.checkQueue(self.publisherConn.queue)
+						.then(() => self.channel.checkQueue(self.listenerConn.queue))
+						.then(() => {
+							return true;
+						})
+						.catch((err) => {
+							throw new mSelf.ConnectionFailedError(err.message);
+						});
+				} catch (err) {
+					return Promise.reject(new mSelf.ConnectionFailedError(err.message));
+				}
 			};
 
 			// #region Publisher

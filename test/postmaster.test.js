@@ -321,4 +321,69 @@ describe('full stack tests:', function () {
 			})
 			.catch(() => {});
 	});
+
+	it('should reconnect if the connection is lost', function () {
+		this.timeout(10 * 1000);
+
+		postmaster.publisherConn.queue = 'bad queue';
+		return postmaster.healthCheck()
+			.then(() => {
+				return Promise.reject('Should have failed health check');
+			})
+			.catch(() => {
+				return new Promise((resolve, reject) => {
+					setTimeout(() => {
+						postmaster.healthCheck()
+							.then(() => {
+								resolve();
+							})
+							.catch((err) => {
+								reject(err);
+							});
+					}, 2000);
+				});
+			});
+	});
+
+	it('should hold published messages if the connection is lost', function (done) {
+		this.timeout(10 * 1000);
+
+		// Force the connection to be closed and try to send.
+		postmaster.reconnecting = true;
+		postmaster.channel = null;
+		postmaster.publish('cmd:test_message', {test: true})
+			.then(() => {
+				done();
+			})
+			.catch((err) => {
+				done(err);
+			});
+
+		// Trigger the reconnect.
+		postmaster.reconnect();
+	});
+
+	it('should hold responses if the connection is lost', function (done) {
+		this.timeout(10 * 1000);
+
+		// Force the connection to be closed and try to send.
+		postmaster.reconnecting = true;
+		postmaster.channel = null;
+		postmaster.sendReply({test: 'test data'}, {
+			fields: {routingKey: 'cmd:test_message'},
+			properties: {
+				headers: {},
+				replyTo: postmaster.publisherConn.queue
+			}
+		})
+			.then(() => {
+				done();
+			})
+			.catch((err) => {
+				done(err);
+			});
+
+		// Trigger the reconnect.
+		postmaster.reconnect();
+	});
 });
