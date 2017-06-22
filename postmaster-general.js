@@ -29,6 +29,7 @@ const mSelf = module.exports = {
 			this.options.listener = options.listener || this.options.listener;
 			this.options.publisher = options.publisher || this.options.publisher;
 			this.options.deadLetter = options.deadLetter || this.options.deadLetter;
+			this.options.channel = options.channel || this.options.channel;
 
 			// Set convenience parameters.
 			this.options.listener.name = queueName;
@@ -39,6 +40,9 @@ const mSelf = module.exports = {
 			this.publisherConn = {};
 			this.listenerConn = {};
 			this.shuttingDown = false;
+			this.reconnectTries = 0;
+			this.reconnecting = false;
+			this.reconnectTimer = null;
 
 			// If queues should auto-delete, make sure they're exclusive and not durable, unless specified.
 			if (this.options.listener.queue.options.autoDelete) {
@@ -71,8 +75,13 @@ const mSelf = module.exports = {
 			this.dom = domain.create();
 			this.dom.on('error', (err) => {
 				self.logger.error({err: err}, err.message);
+
 				if (!self.shuttingDown) {
-					self.stop();
+					if (!self.reconnecting) {
+						self.reconnect();
+					} else if (self.reconnectTries >= self.options.channel.reconnectLimit) {
+						self.stop();
+					}
 				}
 			});
 
@@ -100,6 +109,53 @@ const mSelf = module.exports = {
 			this.stop = function () {
 				self.shuttingDown = true;
 				self.close();
+				if (self.reconnectTimer) {
+					clearTimeout(self.reconnectTimer);
+				}
+			};
+
+			/**
+			 * Called to start the PostmasterGeneral instance.
+			 */
+			this.reconnect = function () {
+				self.reconnecting = true;
+				try {
+					self.channel.connection.close();
+				} catch (err) { }
+
+				self.logger.info(`Reconnecting to AMQP host ${self.options.url}. Retry # ${self.reconnectTries + 1}`);
+				return self.connect()
+					.then((conns) => {
+						const publisherCallMap = self.publisherConn.callMap;
+						const listenerCallMap = self.listenerConn.callMap;
+
+						self.publisherConn = conns[0];
+						self.publisherConn.callMap = publisherCallMap;
+
+						self.listenerConn = conns[1];
+						self.listenerConn.callMap = listenerCallMap;
+					})
+					.then(() => self.declareDeadLetter())
+					.then(() => self.listenForReplies())
+					.then(() => self.listenForMessages())
+					.then(() => {
+						self.reconnectTries = 0;
+						self.reconnecting = false;
+						if (self.reconnectTimer) {
+							clearTimeout(self.reconnectTimer);
+						}
+						self.logger.info(`Reconnected to AMQP host ${self.options.url}!`);
+					})
+					.catch(() => {
+						self.reconnectTries += 1;
+						if (self.reconnectTries < self.options.channel.reconnectLimit) {
+							self.reconnectTimer = setTimeout(() => {
+								self.reconnect();
+							}, self.options.channel.reconnectInterval);
+						} else {
+							self.stop();
+						}
+					});
 			};
 
 			/**
