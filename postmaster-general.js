@@ -244,7 +244,29 @@ const mSelf = module.exports = {
 			 * @param {object} args - Optional arguments, including "requestId", "replyRequired", and "trace".
 			 * @returns {Promise} - Promise returning the message response, if one is requested.
 			 */
-			this.publish = function (address, message, args) {
+			this.publish = function (address, message, args, retryCount) {
+				if (self.reconnecting) {
+					return new Promise(function (resolve, reject) {
+						retryCount = retryCount || 0;
+
+						if (retryCount < self.options.publisher.retryCount) {
+							retryCount += 1;
+
+							setTimeout(() => {
+								self.publish(address, message, args, retryCount)
+									.then((results) => {
+										resolve(results);
+									})
+									.catch((err) => {
+										reject(err);
+									});
+							}, self.options.publisher.retryInterval);
+						} else {
+							reject(new Error(`postmaster-general failed to publish message after ${retryCount} tries!`));
+						}
+					});
+				}
+
 				return new Promise((resolve, reject) => {
 					args = args || {};
 					let replyRequired = args.replyRequired;
@@ -484,38 +506,71 @@ const mSelf = module.exports = {
 					if (error) {
 						self.logger.error({err: error, message: message}, 'Error processing message.');
 					} else if (out && message.properties.replyTo) {
-						let outMessage = JSON.stringify(out);
-
-						try {
-							self.channel.sendToQueue(message.properties.replyTo, new Buffer(outMessage), {
-								correlationId: message.properties.correlationId,
-								headers: message.properties.headers
+						self.sendReply(out, message)
+							.catch((err) => {
+								self.logger.error({err: err}, 'postmaster-general failed to send reply!');
 							});
-							self.logger.trace({message: out, requestId: message.properties.headers.requestId}, 'postmaster-general sent reply!');
-							if (message.properties.headers.trace) {
-								let requestId = message.properties.headers.requestId || 'default';
-								let traceMessage = JSON.parse(outMessage);
-								traceMessage.sentAt = new Date();
-								traceMessage.replyTo = message.properties.replyTo;
-								traceMessage.correlationId = message.properties.correlationId;
-								try {
-									self.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(JSON.stringify(traceMessage)), {
-										contentType: 'application/json',
-										headers: {
-											requestId: requestId
-										}
-									});
-								} catch (err) {
-									self.logger.warn({message: out, requestId: message.properties.headers.requestId}, `Failed to send log message!`);
-								}
-							}
-						} catch (err) {
-							self.logger.error({err: err}, 'postmaster-general failed to send reply!');
-						}
 					}
 
 					// If we get here, we're going to try and process the message. Go ahead and ack.
 					self.channel.ack(message);
+				});
+			};
+
+			this.sendReply = function (out, message, retryCount) {
+				if (self.reconnecting) {
+					return new Promise(function (resolve, reject) {
+						retryCount = retryCount || 0;
+
+						if (retryCount < self.options.listener.retryCount) {
+							retryCount += 1;
+
+							setTimeout(() => {
+								self.sendReply(out, message, retryCount)
+									.then((results) => {
+										resolve(results);
+									})
+									.catch((err) => {
+										reject(err);
+									});
+							}, self.options.listener.retryInterval);
+						} else {
+							reject(new Error(`postmaster-general failed to publish reply message after ${retryCount} tries!`));
+						}
+					});
+				}
+
+				return new Promise(function (resolve, reject) {
+					let outMessage = JSON.stringify(out);
+
+					try {
+						self.channel.sendToQueue(message.properties.replyTo, new Buffer(outMessage), {
+							correlationId: message.properties.correlationId,
+							headers: message.properties.headers
+						});
+						self.logger.trace({message: out, requestId: message.properties.headers.requestId}, 'postmaster-general sent reply!');
+						if (message.properties.headers.trace) {
+							let requestId = message.properties.headers.requestId || 'default';
+							let traceMessage = JSON.parse(outMessage);
+							traceMessage.sentAt = new Date();
+							traceMessage.replyTo = message.properties.replyTo;
+							traceMessage.correlationId = message.properties.correlationId;
+							try {
+								self.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(JSON.stringify(traceMessage)), {
+									contentType: 'application/json',
+									headers: {
+										requestId: requestId
+									}
+								});
+							} catch (err) {
+								self.logger.warn({message: out, requestId: message.properties.headers.requestId}, `Failed to send log message!`);
+							}
+						}
+
+						resolve();
+					} catch (err) {
+						reject(err);
+					}
 				});
 			};
 

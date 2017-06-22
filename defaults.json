@@ -20,6 +20,8 @@
 		}
 	},
 	"listener": {
+		"retryCount": 30,
+		"retryInterval": 1000,
 		"queue": {
 			"prefix": "postmaster.sub",
 			"separator": ".",
@@ -41,6 +43,8 @@
 		}
 	},
 	"publisher": {
+		"retryCount": 30,
+		"retryInterval": 1000,
 		"queue": {
 			"prefix": "postmaster.pub",
 			"separator": ".",
