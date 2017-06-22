@@ -121,7 +121,7 @@ const mSelf = module.exports = {
 				self.reconnecting = true;
 				try {
 					self.channel.connection.close();
-				} catch (err) { }
+				} catch (err) {}
 
 				self.logger.info(`Reconnecting to AMQP host ${self.options.url}. Retry # ${self.reconnectTries + 1}`);
 				return self.connect()
@@ -290,28 +290,44 @@ const mSelf = module.exports = {
 						}, self.publisherConn.timeout);
 
 						// Publish the message. If publishing failed, indicate that the channel's write buffer is full.
-						let pubSuccess = self.channel.publish(self.publisherConn.exchange, topic, new Buffer(messageString), options);
+						let pubSuccess;
+						try {
+							pubSuccess = self.channel.publish(self.publisherConn.exchange, topic, new Buffer(messageString), options);
+						} catch (err) {
+							self.logger.error({err: err}, 'postmaster-general encountered exception while publishing a message!');
+							pubSuccess = false;
+						}
 						if (pubSuccess) {
 							self.logger.trace({topic: topic, message: message, requestId: requestId}, 'postmaster-general sent message successfully!');
 							if (trace) {
 								let traceMessage = JSON.parse(messageString);
 								traceMessage.sentAt = new Date();
 								traceMessage.address = address;
-								self.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(JSON.stringify(traceMessage)), {
-									contentType: 'application/json',
-									headers: {
-										requestId: requestId
-									}
-								});
+								try {
+									self.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(JSON.stringify(traceMessage)), {
+										contentType: 'application/json',
+										headers: {
+											requestId: requestId
+										}
+									});
+								} catch (err) {
+									self.logger.warn({topic: topic, message: message, requestId: requestId}, `Failed to send log message!`);
+								}
 							}
 						} else {
 							timeout.clearTimeout();
 							delete self.publisherConn.callMap[correlationId];
-							reject(new mSelf.PublishBufferFullError(`postmaster-general failed sending message due to full publish buffer! topic='${topic}' message='${messageString}' requestId='${requestId}'`));
+							reject(new mSelf.PublishBufferFullError(`postmaster-general failed sending message!! topic='${topic}' message='${messageString}' requestId='${requestId}'`));
 						}
 					} else {
 						// if no callback is requested, simply publish the message.
-						let pubSuccess = self.channel.publish(self.publisherConn.exchange, topic, new Buffer(messageString), options);
+						let pubSuccess;
+						try {
+							pubSuccess = self.channel.publish(self.publisherConn.exchange, topic, new Buffer(messageString), options);
+						} catch (err) {
+							self.logger.error({err: err}, 'postmaster-general encountered exception while publishing a message!');
+							pubSuccess = false;
+						}
 						if (pubSuccess) {
 							self.logger.trace({topic: topic, message: message, requestId: requestId}, 'postmaster-general sent message successfully!');
 							// Log the request, if the tracing request id is passed.
@@ -319,16 +335,20 @@ const mSelf = module.exports = {
 								let traceMessage = JSON.parse(messageString);
 								traceMessage.sentAt = new Date();
 								traceMessage.address = address;
-								self.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(JSON.stringify(traceMessage)), {
-									contentType: 'application/json',
-									headers: {
-										requestId: requestId
-									}
-								});
+								try {
+									self.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(JSON.stringify(traceMessage)), {
+										contentType: 'application/json',
+										headers: {
+											requestId: requestId
+										}
+									});
+								} catch (err) {
+									self.logger.warn({topic: topic, message: message, requestId: requestId}, `Failed to send log message!`);
+								}
 							}
 							resolve();
 						} else {
-							reject(new mSelf.PublishBufferFullError(`postmaster-general failed sending message due to full publish buffer! topic='${topic}' message='${messageString}' requestId='${requestId}'`));
+							reject(new mSelf.PublishBufferFullError(`postmaster-general failed sending message! topic='${topic}' message='${messageString}' requestId='${requestId}'`));
 						}
 					}
 				});
@@ -344,8 +364,8 @@ const mSelf = module.exports = {
 
 				// Only handle messages that belong to us, and that we have an active handler for.
 				let correlationId = message.properties.correlationId;
+				let content = message.content ? message.content.toString() : undefined;
 				if (correlationId && self.publisherConn.callMap[correlationId]) {
-					let content = message.content ? message.content.toString() : undefined;
 					// If there's no content in the response, indicate error
 					if (content) {
 						try {
@@ -362,7 +382,7 @@ const mSelf = module.exports = {
 					}
 					delete self.publisherConn.callMap[correlationId];
 				} else {
-					self.logger.warn({message: message}, 'postmaster-general received reply to a request it didn\'t send!');
+					self.logger.warn({message: JSON.stringify(content)}, 'postmaster-general received reply to a request it didn\'t send!');
 				}
 			};
 
@@ -465,23 +485,32 @@ const mSelf = module.exports = {
 						self.logger.error({err: error, message: message}, 'Error processing message.');
 					} else if (out && message.properties.replyTo) {
 						let outMessage = JSON.stringify(out);
-						self.channel.sendToQueue(message.properties.replyTo, new Buffer(outMessage), {
-							correlationId: message.properties.correlationId,
-							headers: message.properties.headers
-						});
-						self.logger.trace({message: out, requestId: message.properties.headers.requestId}, 'postmaster-general sent reply!');
-						if (message.properties.headers.trace) {
-							let requestId = message.properties.headers.requestId || 'default';
-							let traceMessage = JSON.parse(outMessage);
-							traceMessage.sentAt = new Date();
-							traceMessage.replyTo = message.properties.replyTo;
-							traceMessage.correlationId = message.properties.correlationId;
-							self.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(JSON.stringify(traceMessage)), {
-								contentType: 'application/json',
-								headers: {
-									requestId: requestId
-								}
+
+						try {
+							self.channel.sendToQueue(message.properties.replyTo, new Buffer(outMessage), {
+								correlationId: message.properties.correlationId,
+								headers: message.properties.headers
 							});
+							self.logger.trace({message: out, requestId: message.properties.headers.requestId}, 'postmaster-general sent reply!');
+							if (message.properties.headers.trace) {
+								let requestId = message.properties.headers.requestId || 'default';
+								let traceMessage = JSON.parse(outMessage);
+								traceMessage.sentAt = new Date();
+								traceMessage.replyTo = message.properties.replyTo;
+								traceMessage.correlationId = message.properties.correlationId;
+								try {
+									self.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(JSON.stringify(traceMessage)), {
+										contentType: 'application/json',
+										headers: {
+											requestId: requestId
+										}
+									});
+								} catch (err) {
+									self.logger.warn({message: out, requestId: message.properties.headers.requestId}, `Failed to send log message!`);
+								}
+							}
+						} catch (err) {
+							self.logger.error({err: err}, 'postmaster-general failed to send reply!');
 						}
 					}
 
