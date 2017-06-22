@@ -232,9 +232,11 @@ const mSelf = module.exports = {
 							return true;
 						})
 						.catch((err) => {
+							self.logger.error({ err: err }, 'postmaster-general failed healthcheck!');
 							throw new mSelf.ConnectionFailedError(err.message);
 						});
 				} catch (err) {
+					self.logger.error({ err: err }, 'postmaster-general failed healthcheck!');
 					return Promise.reject(new mSelf.ConnectionFailedError(err.message));
 				}
 			};
