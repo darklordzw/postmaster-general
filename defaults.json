@@ -1,11 +1,6 @@
 {
 	"type": "amqp",
 	"url": "amqp://guest:guest@localhost:5672",
-	"channel": {
-		"prefetch": 1,
-		"reconnectInterval": 2500,
-		"reconnectLimit": 12
-	},
 	"deadLetter": {
 		"queue": {
 			"name": "postmaster.dlq"
@@ -20,8 +15,9 @@
 		}
 	},
 	"listener": {
-		"retryCount": 30,
-		"retryInterval": 1000,
+		"channel": {
+			"prefetch": 1
+		},
 		"queue": {
 			"prefix": "postmaster.sub",
 			"separator": ".",
@@ -43,8 +39,9 @@
 		}
 	},
 	"publisher": {
-		"retryCount": 30,
-		"retryInterval": 1000,
+		"channel": {
+			"prefetch": 1
+		},
 		"queue": {
 			"prefix": "postmaster.pub",
 			"separator": ".",

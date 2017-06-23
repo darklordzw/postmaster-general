@@ -29,20 +29,15 @@ const mSelf = module.exports = {
 			this.options.listener = options.listener || this.options.listener;
 			this.options.publisher = options.publisher || this.options.publisher;
 			this.options.deadLetter = options.deadLetter || this.options.deadLetter;
-			this.options.channel = options.channel || this.options.channel;
 
 			// Set convenience parameters.
 			this.options.listener.name = queueName;
 			this.options.url = options.url || this.options.url;
 			this.options.logger = options.logger;
 			this.options.logLevel = options.logLevel;
-			this.channel = null;
 			this.publisherConn = {};
 			this.listenerConn = {};
 			this.shuttingDown = false;
-			this.reconnectTries = 0;
-			this.reconnecting = false;
-			this.reconnectTimer = null;
 
 			// If queues should auto-delete, make sure they're exclusive and not durable, unless specified.
 			if (this.options.listener.queue.options.autoDelete) {
@@ -75,13 +70,8 @@ const mSelf = module.exports = {
 			this.dom = domain.create();
 			this.dom.on('error', (err) => {
 				self.logger.error({err: err}, err.message);
-
 				if (!self.shuttingDown) {
-					if (!self.reconnecting) {
-						self.reconnect();
-					} else if (self.reconnectTries >= self.options.channel.reconnectLimit) {
-						self.stop();
-					}
+					self.stop();
 				}
 			});
 
@@ -90,12 +80,15 @@ const mSelf = module.exports = {
 			 */
 			this.start = function () {
 				self.logger.info('Starting postmaster-general...');
-				return self.connect()
-					.then((conns) => {
-						self.publisherConn = conns[0];
-						self.listenerConn = conns[1];
+				return self.connect('publisher')
+					.then((conn) => {
+						self.publisherConn = conn;
 					})
-					.then(() => self.declareDeadLetter())
+					.then(() => self.connect('listener'))
+					.then((conn) => {
+						self.listenerConn = conn;
+					})
+					.then(() => self.declareDeadLetter(self.publisherConn.channel))
 					.then(() => self.listenForReplies())
 					.then(() => self.listenForMessages())
 					.then(() => {
@@ -108,137 +101,81 @@ const mSelf = module.exports = {
 			 */
 			this.stop = function () {
 				self.shuttingDown = true;
-				self.close();
-				if (self.reconnectTimer) {
-					clearTimeout(self.reconnectTimer);
-				}
-			};
-
-			/**
-			 * Called to start the PostmasterGeneral instance.
-			 */
-			this.reconnect = function () {
-				self.reconnecting = true;
-				try {
-					self.channel.connection.close();
-				} catch (err) {}
-
-				self.logger.info(`Reconnecting to AMQP host ${self.options.url}. Retry # ${self.reconnectTries + 1}`);
-				return self.connect()
-					.then((conns) => {
-						const publisherCallMap = self.publisherConn.callMap;
-						const listenerCallMap = self.listenerConn.callMap;
-
-						self.publisherConn = conns[0];
-						self.publisherConn.callMap = publisherCallMap;
-
-						self.listenerConn = conns[1];
-						self.listenerConn.callMap = listenerCallMap;
-					})
-					.then(() => self.declareDeadLetter())
-					.then(() => self.listenForReplies())
-					.then(() => self.listenForMessages())
-					.then(() => {
-						self.reconnectTries = 0;
-						self.reconnecting = false;
-						if (self.reconnectTimer) {
-							clearTimeout(self.reconnectTimer);
-						}
-						self.logger.info(`Reconnected to AMQP host ${self.options.url}!`);
-					})
-					.catch(() => {
-						self.reconnectTries += 1;
-						if (self.reconnectTries < self.options.channel.reconnectLimit) {
-							self.reconnectTimer = setTimeout(() => {
-								self.reconnect();
-							}, self.options.channel.reconnectInterval);
-						} else {
-							self.stop();
-						}
-					});
+				self.close('publisher');
+				self.close('listener');
 			};
 
 			/**
 			 * Connects to the AMQP host and initializes exchanges and queues.
+			 * @param {string} connectionType - Either "publisher" or "listener".
 			 * @returns {Promise} - Promise callback indicating connection success or failure.
 			 */
-			this.connect = function () {
-				self.logger.info(`Connecting to AMQP host ${self.options.url}`);
-				return amqp.connect(self.options.url)
+			this.connect = function (connectionType) {
+				self.logger.info(`Connecting ${connectionType} to AMQP host ${self.options.url}`);
+				let queueOptions = self.options[connectionType];
+				return amqp.connect(self.options.url, queueOptions.socketOptions)
 					.then((conn) => {
 						self.dom.add(conn);
 						return conn.createChannel();
 					})
 					.then((channel) => {
-						self.channel = channel;
-						self.dom.add(self.channel);
-						self.channel.prefetch(self.options.channel.prefetch);
-
-						return Promise.all([
-							self.initializeQueues('publisher'),
-							self.initializeQueues('listener')
-						]);
+						self.dom.add(channel);
+						let ex = queueOptions.exchange;
+						let queue = queueOptions.queue;
+						let queueName = connectionType === 'publisher' ? self.resolveCallbackQueue(queue) : _.trim(queueOptions.name);
+						channel.prefetch(queueOptions.channel.prefetch);
+						return Promise.props({
+							channel,
+							exchange: channel.assertExchange(ex.name, ex.type, ex.options),
+							queue: channel.assertQueue(queueName, queue.options),
+							timeout: queue.options.arguments['x-message-ttl']
+						}).then((connection) => {
+							self.logger.info(`${connectionType} connected!`);
+							return {
+								channel: connection.channel,
+								exchange: connection.exchange.exchange,
+								queue: connection.queue.queue,
+								timeout: connection.timeout,
+								callMap: {}
+							};
+						});
 					});
 			};
 
 			/**
-			 * Initializes the exchanges and queues for the passed connection type.
-			 * @param {string} connectionType - Either "publisher" or "listener".
-			 * @returns {Promise} - Promise callback indicating connection success or failure.
-			 */
-			this.initializeQueues = function (connectionType) {
-				let queueOptions = self.options[connectionType];
-				let ex = queueOptions.exchange;
-				let queue = queueOptions.queue;
-				let queueName = connectionType === 'publisher' ? self.resolveCallbackQueue(queue) : _.trim(queueOptions.name);
-				return Promise.props({
-					exchange: self.channel.assertExchange(ex.name, ex.type, ex.options),
-					queue: self.channel.assertQueue(queueName, queue.options),
-					timeout: queue.options.arguments['x-message-ttl']
-				}).then((connection) => {
-					self.logger.info(`${connectionType} connected!`);
-					return {
-						exchange: connection.exchange.exchange,
-						queue: connection.queue.queue,
-						timeout: connection.timeout,
-						callMap: {}
-					};
-				});
-			};
-
-			/**
 			 * Disconnects from the AMQP server.
+			 * @param {string} connectionType - Either "publisher" or "listener".
 			 */
-			this.close = function () {
-				self.logger.info(`Closing amqp connection.`);
+			this.close = function (connectionType) {
+				let connection = connectionType === 'publisher' ? self.publisherConn : self.listenerConn;
+
+				self.logger.info(`Closing ${connectionType} connection.`);
 				try {
-					self.channel.connection.close();
+					connection.channel.connection.close();
 				} catch (err) {
-					self.logger.error({err: err}, `Encountered error while closing amqp connection!`);
+					self.logger.error({err: err}, `Encountered error while closing ${connectionType} connection!`);
 				}
 			};
 
 			/**
 			 * Checks the health of the connection.
+			 * @param {string} connectionType - Either "publisher" or "listener".
 			 * @returns {Promise} - A promise that resolves to true, if postmaster is healthy.
 			 */
 			this.healthCheck = function () {
+				let publisherChannel = self.publisherConn.channel;
+				let listenerChannel = self.listenerConn.channel;
+
 				// Simple health check just verifies both the incoming and outgoing queues.
 				// The promises will reject if either channel is invalidated, or if the queues don't exist.
-				try {
-					return self.channel.checkQueue(self.publisherConn.queue)
-						.then(() => self.channel.checkQueue(self.listenerConn.queue))
-						.then(() => {
-							return true;
-						})
-						.catch((err) => {
-							self.logger.error({err: err}, 'postmaster-general failed healthcheck!');
-							throw new mSelf.ConnectionFailedError(err.message);
-						});
-				} catch (err) {
-					self.logger.error({err: err}, 'postmaster-general failed healthcheck!');
-					return Promise.reject(new mSelf.ConnectionFailedError(err.message));
-				}
+				return publisherChannel.checkQueue(self.publisherConn.queue)
+					.then(() => listenerChannel.checkQueue(self.listenerConn.queue))
+					.then(() => {
+						return true;
+					})
+					.catch((err) => {
+						throw new mSelf.ConnectionFailedError(err.message);
+					});
 			};
 
 			// #region Publisher
@@ -250,29 +187,7 @@ const mSelf = module.exports = {
 			 * @param {object} args - Optional arguments, including "requestId", "replyRequired", and "trace".
 			 * @returns {Promise} - Promise returning the message response, if one is requested.
 			 */
-			this.publish = function (address, message, args, retryCount) {
-				if (self.reconnecting) {
-					return new Promise(function (resolve, reject) {
-						retryCount = retryCount || 0;
-
-						if (retryCount < self.options.publisher.retryCount) {
-							retryCount += 1;
-
-							setTimeout(() => {
-								self.publish(address, message, args, retryCount)
-									.then((results) => {
-										resolve(results);
-									})
-									.catch((err) => {
-										reject(err);
-									});
-							}, self.options.publisher.retryInterval);
-						} else {
-							reject(new Error(`postmaster-general failed to publish message after ${retryCount} tries!`));
-						}
-					});
-				}
-
+			this.publish = function (address, message, args) {
 				return new Promise((resolve, reject) => {
 					args = args || {};
 					let replyRequired = args.replyRequired;
@@ -318,44 +233,28 @@ const mSelf = module.exports = {
 						}, self.publisherConn.timeout);
 
 						// Publish the message. If publishing failed, indicate that the channel's write buffer is full.
-						let pubSuccess;
-						try {
-							pubSuccess = self.channel.publish(self.publisherConn.exchange, topic, new Buffer(messageString), options);
-						} catch (err) {
-							self.logger.error({err: err}, 'postmaster-general encountered exception while publishing a message!');
-							pubSuccess = false;
-						}
+						let pubSuccess = self.publisherConn.channel.publish(self.publisherConn.exchange, topic, new Buffer(messageString), options);
 						if (pubSuccess) {
 							self.logger.trace({topic: topic, message: message, requestId: requestId}, 'postmaster-general sent message successfully!');
 							if (trace) {
 								let traceMessage = JSON.parse(messageString);
 								traceMessage.sentAt = new Date();
 								traceMessage.address = address;
-								try {
-									self.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(JSON.stringify(traceMessage)), {
-										contentType: 'application/json',
-										headers: {
-											requestId: requestId
-										}
-									});
-								} catch (err) {
-									self.logger.warn({topic: topic, message: message, requestId: requestId}, `Failed to send log message!`);
-								}
+								self.publisherConn.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(JSON.stringify(traceMessage)), {
+									contentType: 'application/json',
+									headers: {
+										requestId: requestId
+									}
+								});
 							}
 						} else {
 							timeout.clearTimeout();
 							delete self.publisherConn.callMap[correlationId];
-							reject(new mSelf.PublishBufferFullError(`postmaster-general failed sending message!! topic='${topic}' message='${messageString}' requestId='${requestId}'`));
+							reject(new mSelf.PublishBufferFullError(`postmaster-general failed sending message due to full publish buffer! topic='${topic}' message='${messageString}' requestId='${requestId}'`));
 						}
 					} else {
 						// if no callback is requested, simply publish the message.
-						let pubSuccess;
-						try {
-							pubSuccess = self.channel.publish(self.publisherConn.exchange, topic, new Buffer(messageString), options);
-						} catch (err) {
-							self.logger.error({err: err}, 'postmaster-general encountered exception while publishing a message!');
-							pubSuccess = false;
-						}
+						let pubSuccess = self.publisherConn.channel.publish(self.publisherConn.exchange, topic, new Buffer(messageString), options);
 						if (pubSuccess) {
 							self.logger.trace({topic: topic, message: message, requestId: requestId}, 'postmaster-general sent message successfully!');
 							// Log the request, if the tracing request id is passed.
@@ -363,20 +262,16 @@ const mSelf = module.exports = {
 								let traceMessage = JSON.parse(messageString);
 								traceMessage.sentAt = new Date();
 								traceMessage.address = address;
-								try {
-									self.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(JSON.stringify(traceMessage)), {
-										contentType: 'application/json',
-										headers: {
-											requestId: requestId
-										}
-									});
-								} catch (err) {
-									self.logger.warn({topic: topic, message: message, requestId: requestId}, `Failed to send log message!`);
-								}
+								self.publisherConn.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(JSON.stringify(traceMessage)), {
+									contentType: 'application/json',
+									headers: {
+										requestId: requestId
+									}
+								});
 							}
 							resolve();
 						} else {
-							reject(new mSelf.PublishBufferFullError(`postmaster-general failed sending message! topic='${topic}' message='${messageString}' requestId='${requestId}'`));
+							reject(new mSelf.PublishBufferFullError(`postmaster-general failed sending message due to full publish buffer! topic='${topic}' message='${messageString}' requestId='${requestId}'`));
 						}
 					}
 				});
@@ -392,8 +287,8 @@ const mSelf = module.exports = {
 
 				// Only handle messages that belong to us, and that we have an active handler for.
 				let correlationId = message.properties.correlationId;
-				let content = message.content ? message.content.toString() : undefined;
 				if (correlationId && self.publisherConn.callMap[correlationId]) {
+					let content = message.content ? message.content.toString() : undefined;
 					// If there's no content in the response, indicate error
 					if (content) {
 						try {
@@ -410,7 +305,7 @@ const mSelf = module.exports = {
 					}
 					delete self.publisherConn.callMap[correlationId];
 				} else {
-					self.logger.warn({message: JSON.stringify(content)}, 'postmaster-general received reply to a request it didn\'t send!');
+					self.logger.warn({message: message}, 'postmaster-general received reply to a request it didn\'t send!');
 				}
 			};
 
@@ -418,7 +313,7 @@ const mSelf = module.exports = {
 			 * Called to begin consuming from the RPC queue associated with this instance.
 			 */
 			this.listenForReplies = function () {
-				return self.channel.consume(self.publisherConn.queue, self.consumeReply, {noAck: true});
+				return self.publisherConn.channel.consume(self.publisherConn.queue, self.consumeReply, {noAck: true});
 			};
 
 			/**
@@ -463,7 +358,7 @@ const mSelf = module.exports = {
 				}
 
 				// Wildcards in AMQP work differently than standard regex, '#' effectively corresponds to '*'.
-				return self.channel.bindQueue(self.listenerConn.queue, self.listenerConn.exchange, topic)
+				return self.listenerConn.channel.bindQueue(self.listenerConn.queue, self.listenerConn.exchange, topic)
 					.then(() => {
 						self.listenerConn.callMap[topic] = callback;
 					});
@@ -474,7 +369,7 @@ const mSelf = module.exports = {
 			 */
 			this.removeListener = function (address) {
 				let topic = self.resolveTopic(address);
-				return self.channel.unbindQueue(self.listenerConn.queue, self.listenerConn.exchange, topic)
+				return self.listenerConn.channel.unbindQueue(self.listenerConn.queue, self.listenerConn.exchange, topic)
 					.then(() => {
 						delete self.listenerConn.callMap[topic];
 					});
@@ -505,52 +400,15 @@ const mSelf = module.exports = {
 
 				// If we don't have a handler, just re-queue it.
 				if (!callMapKey || !self.listenerConn.callMap[callMapKey]) {
-					return self.channel.nack(message, false);
+					return self.listenerConn.channel.nack(message, false);
 				}
 
 				return self.listenerConn.callMap[callMapKey](data, (error, out) => {
 					if (error) {
 						self.logger.error({err: error, message: message}, 'Error processing message.');
 					} else if (out && message.properties.replyTo) {
-						self.sendReply(out, message)
-							.catch((err) => {
-								self.logger.error({err: err}, 'postmaster-general failed to send reply!');
-							});
-					}
-
-					// If we get here, we're going to try and process the message. Go ahead and ack.
-					self.channel.ack(message);
-				});
-			};
-
-			this.sendReply = function (out, message, retryCount) {
-				if (self.reconnecting) {
-					return new Promise(function (resolve, reject) {
-						retryCount = retryCount || 0;
-
-						if (retryCount < self.options.listener.retryCount) {
-							retryCount += 1;
-
-							setTimeout(() => {
-								self.sendReply(out, message, retryCount)
-									.then((results) => {
-										resolve(results);
-									})
-									.catch((err) => {
-										reject(err);
-									});
-							}, self.options.listener.retryInterval);
-						} else {
-							reject(new Error(`postmaster-general failed to publish reply message after ${retryCount} tries!`));
-						}
-					});
-				}
-
-				return new Promise(function (resolve, reject) {
-					let outMessage = JSON.stringify(out);
-
-					try {
-						self.channel.sendToQueue(message.properties.replyTo, new Buffer(outMessage), {
+						let outMessage = JSON.stringify(out);
+						self.listenerConn.channel.sendToQueue(message.properties.replyTo, new Buffer(outMessage), {
 							correlationId: message.properties.correlationId,
 							headers: message.properties.headers
 						});
@@ -561,22 +419,17 @@ const mSelf = module.exports = {
 							traceMessage.sentAt = new Date();
 							traceMessage.replyTo = message.properties.replyTo;
 							traceMessage.correlationId = message.properties.correlationId;
-							try {
-								self.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(JSON.stringify(traceMessage)), {
-									contentType: 'application/json',
-									headers: {
-										requestId: requestId
-									}
-								});
-							} catch (err) {
-								self.logger.warn({message: out, requestId: message.properties.headers.requestId}, `Failed to send log message!`);
-							}
+							self.publisherConn.channel.publish(self.publisherConn.exchange, self.resolveTopic(`log:${requestId}`), new Buffer(JSON.stringify(traceMessage)), {
+								contentType: 'application/json',
+								headers: {
+									requestId: requestId
+								}
+							});
 						}
-
-						resolve();
-					} catch (err) {
-						reject(err);
 					}
+
+					// If we get here, we're going to try and process the message. Go ahead and ack.
+					self.listenerConn.channel.ack(message);
 				});
 			};
 
@@ -587,7 +440,7 @@ const mSelf = module.exports = {
 				let content = message.content ? message.content.toString() : undefined;
 				if (!content) {
 					// Do not requeue message if there is no payload.
-					return self.channel.nack(message, false, false);
+					return self.listenerConn.channel.nack(message, false, false);
 				}
 				let data;
 				try {
@@ -602,7 +455,7 @@ const mSelf = module.exports = {
 			 * Called to set the listener to listening.
 			 */
 			this.listenForMessages = function () {
-				return self.channel.consume(self.listenerConn.queue, self.consume);
+				return self.listenerConn.channel.consume(self.listenerConn.queue, self.consume);
 			};
 
 			// #endregion
@@ -614,19 +467,20 @@ const mSelf = module.exports = {
 			 * `options` and binds them with '#' as
 			 * routing key.
 			 *
+			 * @param  {amqplib.Channel} channel Queue and exchange will be declared on this channel.
 			 * @return {Promise}         Resolves when the exchange, queue and binding are created.
 			 */
-			this.declareDeadLetter = function () {
+			this.declareDeadLetter = function (channel) {
 				let options = self.options.deadLetter;
 				return Promise.try(() => {
-					if (options.queue && options.exchange) {
+					if (channel && options.queue && options.exchange) {
 						let ex = options.exchange;
 						let queue = options.queue;
 						return Promise.all([
-							self.channel.assertExchange(ex.name, ex.type, ex.options),
-							self.channel.assertQueue(queue.name, queue.options)
+							channel.assertExchange(ex.name, ex.type, ex.options),
+							channel.assertQueue(queue.name, queue.options)
 						]).spread((dlx, dlq) =>
-							self.channel.bindQueue(dlq.queue, dlx.exchange, '#')
+							channel.bindQueue(dlq.queue, dlx.exchange, '#')
 								.then(() => {
 									return {rk: '#'};
 								})
