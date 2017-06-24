@@ -8,7 +8,7 @@ const sinon = require('sinon');
 require('sinon-bluebird');
 const sinonChai = require('sinon-chai');
 const uuid = require('uuid');
-const postmasterGeneral = require('../postmaster-general');
+const PostmasterGeneral = require('../postmaster-general');
 
 /* This sets up the Chai assertion library. "should" and "expect"
 initialize their respective assertion properties. The "use()" functions
@@ -24,44 +24,7 @@ describe('utility functions:', function () {
 	let postmaster;
 
 	before(function () {
-		postmaster = new postmasterGeneral.PostmasterGeneral(uuid.v4());
-	});
-
-	describe('resolveCallbackQueue:', function () {
-		it('should use default prefix and separator if no options are provided', function () {
-			let queue = postmaster.resolveCallbackQueue();
-
-			// queue name should contain default prefix 'postmaster' and separator '.'
-			queue.should.contain('postmaster.');
-		});
-
-		it('should use custom prefix', function () {
-			let options = {
-				prefix: 'myprefix'
-			};
-
-			let queue = postmaster.resolveCallbackQueue(options);
-			queue.should.contain('myprefix.');
-		});
-
-		it('should use custom separator', function () {
-			let options = {
-				separator: '|'
-			};
-
-			let queue = postmaster.resolveCallbackQueue(options);
-			queue.should.contain('postmaster|');
-		});
-
-		it('should use custom prefix and separator', function () {
-			let options = {
-				prefix: 'myprefix',
-				separator: '|'
-			};
-
-			let queue = postmaster.resolveCallbackQueue(options);
-			queue.should.contain('myprefix|');
-		});
+		postmaster = new PostmasterGeneral(uuid.v4());
 	});
 
 	/**
@@ -80,7 +43,7 @@ describe('publisher functions:', function () {
 	let sandbox;
 
 	before(function () {
-		postmaster = new postmasterGeneral.PostmasterGeneral(uuid.v4());
+		postmaster = new PostmasterGeneral(uuid.v4());
 		return postmaster.start();
 	});
 
@@ -103,18 +66,17 @@ describe('publisher functions:', function () {
 
 			// Setup spies
 			let spyResolveTopic = sandbox.spy(postmaster, 'resolveTopic');
-			let spyPublish = sandbox.spy(postmaster.publisherConn.channel, 'publish');
+			let spyPublish = sandbox.spy(postmaster.rabbit, 'publish');
 
 			// publish the message
 			postmaster.publish('role:create', {max: 100, min: 25}, {replyRequired: true})
 				.then(() => {
 					done('Should have timed out while waiting on a reply!');
 				})
-				.catch((err) => {
+				.catch(() => {
 					try {
 						spyResolveTopic.should.have.been.calledOnce();
 						spyPublish.should.have.been.called();
-						expect(err).to.be.an.instanceof(postmasterGeneral.RPCTimeoutError);
 						done();
 					} catch (err) {
 						done(err);
@@ -125,7 +87,7 @@ describe('publisher functions:', function () {
 		it('should not wait for a response if replyRequired is not true', function (done) {
 			// Setup spies
 			let spyResolveTopic = sandbox.spy(postmaster, 'resolveTopic');
-			let spyPublish = sandbox.spy(postmaster.publisherConn.channel, 'publish');
+			let spyPublish = sandbox.spy(postmaster.rabbit, 'publish');
 
 			// publish the message
 			postmaster.publish('role:create', {max: 100, min: 25})
@@ -150,7 +112,7 @@ describe('full stack tests:', function () {
 	let sandbox;
 
 	before(function () {
-		postmaster = new postmasterGeneral.PostmasterGeneral(uuid.v4());
+		postmaster = new PostmasterGeneral(uuid.v4());
 		return postmaster.start();
 	});
 
@@ -294,31 +256,5 @@ describe('full stack tests:', function () {
 				expect(res.greeting).to.exist();
 				res.greeting.should.equal('Hello, Steve');
 			});
-	});
-
-	it('should resolve to true if the health check is passed', function () {
-		return postmaster.healthCheck()
-			.then((res) => {
-				expect(res).to.exist();
-				res.should.equal(true);
-			});
-	});
-
-	it('should reject if the listener is unhealthy', function () {
-		postmaster.listenerConn.queue = 'bad queue';
-		return postmaster.healthCheck()
-			.then(() => {
-				return Promise.reject('Should have failed health check');
-			})
-			.catch(() => {});
-	});
-
-	it('should reject if the publisher is unhealthy', function () {
-		postmaster.publisherConn.queue = 'bad queue';
-		return postmaster.healthCheck()
-			.then(() => {
-				return Promise.reject('Should have failed health check');
-			})
-			.catch(() => {});
 	});
 });

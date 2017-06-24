@@ -1,66 +1,31 @@
 {
-	"type": "amqp",
-	"url": "amqp://guest:guest@localhost:5672",
-	"deadLetter": {
-		"queue": {
-			"name": "postmaster.dlq"
-		},
-		"exchange": {
+	"uri": "amqp://guest:guest@localhost:5672",
+	"exchanges": [
+		{
+			"name": "postmaster.topic",
 			"type": "topic",
+			"publishTimeout": 30000
+		},
+		{
 			"name": "postmaster.dlx",
-			"options": {
-				"durable": true,
-				"autoDelete": false
-			}
+			"type": "topic"
 		}
-	},
-	"listener": {
-		"channel": {
-			"prefetch": 1
+	],
+	"queues": [
+		{
+			"name": "postmaster.sub",
+			"subscribe": true,
+			"deadLetter": "postmaster.dlx"
 		},
-		"queue": {
-			"prefix": "postmaster.sub",
-			"separator": ".",
-			"options": {
-				"durable": true,
-				"arguments": {
-					"x-dead-letter-exchange": "postmaster.dlx",
-					"x-message-ttl": 30000
-				}
-			}
-		},
-		"exchange": {
-			"type": "topic",
-			"name": "postmaster.topic",
-			"options": {
-				"durable": true,
-				"autoDelete": false
-			}
+		{
+			"name": "postmaster.dlq"
 		}
-	},
-	"publisher": {
-		"channel": {
-			"prefetch": 1
-		},
-		"queue": {
-			"prefix": "postmaster.pub",
-			"separator": ".",
-			"options": {
-				"autoDelete": true,
-				"exclusive": true,
-				"arguments": {
-					"x-dead-letter-exchange": "postmaster.dlx",
-					"x-message-ttl": 60000
-				}
-			}
-		},
-		"exchange": {
-			"type": "topic",
-			"name": "postmaster.topic",
-			"options": {
-				"durable": true,
-				"autoDelete": false
-			}
+	],
+	"bindings": [
+		{
+			"exchange": "postmaster.dlx",
+			"target": "postmaster.dlq",
+			"keys": [ "#" ]
 		}
-	}
+	]
 }
