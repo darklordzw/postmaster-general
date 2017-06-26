@@ -1,10 +1,12 @@
 {
-	"uri": "amqp://guest:guest@localhost:5672",
+	"connection": {
+		"uri": "amqp://guest:guest@localhost:5672"
+	},
 	"exchanges": [
 		{
 			"name": "postmaster.topic",
 			"type": "topic",
-			"publishTimeout": 30000
+			"replyTimeout": 60000
 		},
 		{
 			"name": "postmaster.dlx",
@@ -15,17 +17,8 @@
 		{
 			"name": "postmaster.sub",
 			"subscribe": true,
+			"messageTtl": 30000,
 			"deadLetter": "postmaster.dlx"
-		},
-		{
-			"name": "postmaster.dlq"
-		}
-	],
-	"bindings": [
-		{
-			"exchange": "postmaster.dlx",
-			"target": "postmaster.dlq",
-			"keys": [ "#" ]
 		}
 	]
 }

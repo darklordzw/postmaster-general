@@ -7,7 +7,6 @@
  * @module postmaster-general
  */
 const rabbit = require('rabbot');
-const _ = require('lodash');
 const Promise = require('bluebird');
 const uuid = require('uuid');
 const bunyan = require('bunyan');
@@ -16,7 +15,7 @@ const defaults = require('./defaults');
 class PostmasterGeneral {
 	/**
 	 * Constructor function for the PostmasterGeneral object.
-	 * @param {string} uri
+	 * @param {string} queueName
 	 * @param {object} [options]
 	 */
 	constructor(queueName, options) {
@@ -24,33 +23,33 @@ class PostmasterGeneral {
 		this.settings = defaults;
 
 		// Set uri, or default to localhost.
-		if (!_.isUndefined(options.uri)) {
-			this.settings.uri = options.uri;
+		if (typeof options.uri !== 'undefined') {
+			this.settings.connection.uri = options.uri;
 		}
 
 		// Set options for listening.
 		const listenerQueue = this.settings.queues[0];
 		listenerQueue.name = queueName;
 
-		if (!_.isUndefined(options.durable)) {
+		if (typeof options.durable !== 'undefined') {
 			listenerQueue.durable = options.durable;
 		}
-		if (!_.isUndefined(options.autoDelete)) {
+		if (typeof options.autoDelete !== 'undefined') {
 			listenerQueue.autoDelete = options.autoDelete;
 		}
-		if (!_.isUndefined(options.exclusive)) {
+		if (typeof options.exclusive !== 'undefined') {
 			listenerQueue.exclusive = options.exclusive;
 		}
-		if (!_.isUndefined(options.limit)) {
+		if (typeof options.limit !== 'undefined') {
 			listenerQueue.limit = options.limit;
 		}
 
 		// Set options for publishing.
-		if (!_.isUndefined(options.publishTimeout)) {
-			this.settings.exchanges[0].publishTimeout = options.publishTimeout;
+		if (typeof options.replyTimeout !== 'undefined') {
+			this.settings.exchanges[0].replyTimeout = options.replyTimeout;
 		}
 		const replyQueueName = options.replyQueue || 'queue';
-		this.settings.replyQueue = {name: `postmaster.reply.${replyQueueName}.${uuid.v4()}`};
+		this.settings.connection.replyQueue = `postmaster.reply.${replyQueueName}.${uuid.v4()}`;
 
 		// Postmaster expects loggers to be syntactially-compatible with the excellent Bunyan library.
 		this.logger = options.logger;
@@ -71,9 +70,6 @@ class PostmasterGeneral {
 		this.rabbit.rejectUnhandled();
 
 		// Add event listeners to log events from rabbot.
-		this.rabbit.on('connected', () => {
-			this.logger.info('postmaster-general started.');
-		});
 		this.rabbit.on('failed', () => {
 			this.logger.warn('postmaster-general failed to connect to RabbitMQ! Retrying...');
 		});
@@ -92,6 +88,16 @@ class PostmasterGeneral {
 	start() {
 		this.logger.info('Starting postmaster-general...');
 		return this.rabbit.configure(this.settings)
+			.then(() => {
+				const promises = [];
+				for (let topic of Object.keys(this.listeners)) {
+					promises.push(this.rabbit.bindQueue(this.settings.exchanges[0].name, this.settings.queues[0].name, topic));
+				}
+				return Promise.all(promises);
+			})
+			.then(() => {
+				this.logger.info('postmaster-general started.');
+			})
 			.catch((err) => {
 				this.logger.error({err: err}, 'postmaster-general failed to start!');
 				throw err;
@@ -105,7 +111,10 @@ class PostmasterGeneral {
 		this.logger.info('Shutting down postmaster-general...');
 		return this.rabbit.shutdown().then(() => {
 			this.logger.info('postmaster-general shutdown successfully.');
-		});
+		})
+			.catch((err) => {
+				this.logger.warn({err: err}, 'postmaster-general encountered error when trying to shutdown!');
+			});
 	}
 
 	/**
@@ -117,12 +126,12 @@ class PostmasterGeneral {
 	}
 
 	/**
-	 * Publishes a message to the specified address, optionally returning a callback.
+	 * Publishes a message to the specified address.
 	 * @param {string} address - The message address.
 	 * @param {object} message - The message data.
-	 * @param {object} [args] - Optional arguments, including "requestId", "replyRequired", and "trace".
-	 * @returns {Promise} - Promise returning the message response, if one is requested.
-	*/
+	 * @param {object} [args] - Optional arguments, including "requestId", and "trace".
+	 * @returns {Promise} - Promise returning the message response.
+	 */
 	publish(address, message, args) {
 		args = args || {};
 
@@ -136,16 +145,6 @@ class PostmasterGeneral {
 			}
 		};
 
-		// If we want a reply, call request.
-		if (args.replyRequired) {
-			this.logger.trace({address: address, message: message}, `postmaster-general sent RPC call.`);
-			return this.rabbit.request(exchange, options)
-				.catch((err) => {
-					this.logger.error({err: err, address: address, message: message}, `postmaster-general failed to send RPC call!`);
-					throw err;
-				});
-		}
-
 		this.logger.trace({address: address, message: message}, `Sent fire-and-forget message.`);
 		return this.rabbit.publish(exchange, options).catch((err) => {
 			this.logger.error({err: err, address: address, message: message}, `postmaster-general failed to send fire-and-forget message!`);
@@ -154,62 +153,129 @@ class PostmasterGeneral {
 	}
 
 	/**
+	 * Publishes a message to the specified address, returning a promise that resolves on reply.
+	 * @param {string} address - The message address.
+	 * @param {object} message - The message data.
+	 * @param {object} [args] - Optional arguments, including "requestId", and "trace".
+	 * @returns {Promise} - Promise returning the message response.
+	 */
+	request(address, message, args) {
+		args = args || {};
+
+		const exchange = this.settings.exchanges[0].name;
+		const options = {
+			type: this.resolveTopic(address),
+			body: message,
+			headers: {
+				requestId: args.requestId || uuid.v4(),
+				trace: args.trace
+			}
+		};
+
+		// If we want a reply, call request.
+		this.logger.trace({address: address, message: message}, `postmaster-general sent RPC call.`);
+		return this.rabbit.request(exchange, options)
+			.then((reply) => {
+				reply.ack();
+
+				reply.properties = reply.properties || {};
+				reply.properties.headers = reply.properties.headers || {};
+
+				const body = reply.body;
+				body.$requestId = reply.properties.headers.requestId;
+				body.$trace = reply.properties.headers.trace;
+				return body;
+			})
+			.catch((err) => {
+				this.logger.error({err: err, address: address, message: message}, `postmaster-general failed to send RPC call!`);
+				throw err;
+			});
+	}
+
+	/**
 	 * Called to bind a new listener to the queue.
+	 * @param {string} address - The message address.
+	 * @param {function} callback - The callback function that handles the message.
+	 * @param {object} [context] - The object to use as the "this" context during execution of the callback function.
 	 */
 	addListener(address, callback, context) {
 		const topic = this.resolveTopic(address);
 
-		this.listeners[address] = this.rabbit.handle({
-			type: topic,
-			context: this,
-			handler: function (message) {
-				if (!message.body) {
-					throw new Error('Missing field "body" for message!');
-				}
-
-				message.properties = message.properties || {};
-				message.properties.headers = message.properties.headers || {};
-
-				const replyTo = message.properties.replyTo;
-				const requestId = message.properties.headers.requestId;
-				const trace = message.properties.headers.trace;
-
-				// To make things easier on ourselves, convert the callback to a promise.
-				const promiseCallback = Promise.promisify(callback, {context: context});
-				return promiseCallback({message: message.body, $requestId: requestId, $trace: trace})
-					.then((reply) => {
-						this.logger.trace({address: address, message: message}, 'postmaster-general processed callback for message.');
-
-						if (replyTo) {
-							message.reply(reply, {headers: {requestId: requestId, trace: trace}});
-						} else {
-							message.ack();
+		return new Promise((resolve, reject) => {
+			try {
+				this.listeners[topic] = this.rabbit.handle({
+					type: topic,
+					context: this,
+					handler: function (message) {
+						if (!message.body) {
+							throw new Error('Missing field "body" for message!');
 						}
-					})
-					.catch((err) => {
-						this.logger.error({err: err, address: address, message: message}, 'postmaster-general encountered error processing callback!');
-						message.reject();
-					});
-			}
-		});
 
-		// Add a sanity-check error handler for the listener, in case an exception is thrown that's not caught in the promise.
-		this.listeners[address].catch((err, message) => {
-			this.logger.error({err: err, address: address, message: message}, 'postmaster-general encountered error processing callback!');
-			message.reject();
+						message.properties = message.properties || {};
+						message.properties.headers = message.properties.headers || {};
+
+						const replyTo = message.properties.replyTo;
+						const requestId = message.properties.headers.requestId;
+						const trace = message.properties.headers.trace;
+
+						// To make things easier on ourselves, convert the callback to a promise.
+						const promiseCallback = Promise.promisify(callback, {context: context});
+						const body = message.body;
+						body.$requestId = requestId;
+						body.$trace = trace;
+
+						return promiseCallback(body)
+							.then((reply) => {
+								this.logger.trace({address: address, message: message}, 'postmaster-general processed callback for message.');
+
+								if (replyTo) {
+									message.reply(reply, {headers: {requestId: requestId, trace: trace}});
+								} else {
+									message.ack();
+								}
+							})
+							.catch((err) => {
+								this.logger.error({err: err, address: address, message: message}, 'postmaster-general encountered error processing callback!');
+								message.reject();
+							});
+					}
+				});
+
+				// Add a sanity-check error handler for the listener, in case an exception is thrown that's not caught in the promise.
+				this.listeners[topic].catch((err, message) => {
+					this.logger.error({err: err, address: address, message: message}, 'postmaster-general encountered error processing callback!');
+					message.reject();
+				});
+
+				resolve();
+			} catch (err) {
+				this.logger.error({err: err, address: address}, 'postmaster-general encountered error while registering a listener!');
+				reject(err);
+			}
 		});
 	}
 
 	/**
 	 * Called to unbind a new listener from the queue.
+	 * @param {string} address - The message address.
 	 */
 	removeListener(address) {
-		const handler = this.listeners[address];
-		if (handler) {
-			handler.remove();
-			delete this.listeners[address];
-			this.logger.info({address: address}, 'postmaster-general removed listener callback.');
-		}
+		const topic = this.resolveTopic(address);
+
+		return new Promise((resolve, reject) => {
+			try {
+				const handler = this.listeners[topic];
+				if (handler) {
+					handler.remove();
+					delete this.listeners[topic];
+					this.logger.info({address: address}, 'postmaster-general removed listener callback.');
+				}
+				resolve();
+			} catch (err) {
+				this.logger.error({err: err, address: address}, 'postmaster-general encountered error while removing a listener!');
+				reject(err);
+			}
+		});
 	}
 }
 

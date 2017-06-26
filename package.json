@@ -1,67 +1,65 @@
 {
-	"name": "postmaster-general",
-	"version": "2.0.0",
-	"description": "A simple library for making microservice message bus calls using Node.js over RabbitMQ.",
-	"author": "Ben Whatley",
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/darklordzw/postmaster-general.git"
-	},
-	"keywords": [
-		"rabbitmq",
-		"microservices",
-		"message bus"
-	],
-	"license": "MIT",
-	"bugs": {
-		"url": "https://github.com/darklordzw/postmaster-general/issues"
-	},
-	"homepage": "https://github.com/darklordzw/postmaster-general#readme",
-	"main": "postmaster-general.js",
-	"files": [
-		"postmaster-general.js",
-		"defaults.json"
-	],
-	"scripts": {
-		"test": "gulp test",
-		"validate": "gulp validate"
-	},
-	"dependencies": {
-		"bluebird": "^3.5.0",
-		"bunyan": "^1.8.10",
-		"lodash": "^4.17.4",
-		"rabbot": "^1.1.0",
-		"uuid": "^3.1.0"
-	},
-	"devDependencies": {
-		"chai": "^3.5.0",
-		"chai3-json-schema": "^1.2.1",
-		"dirty-chai": "^1.2.2",
-		"gulp": "^3.9.1",
-		"gulp-test-rigging": "0.0.5",
-		"sinon": "^1.17.7",
-		"sinon-bluebird": "^3.1.0",
-		"sinon-chai": "^2.11.0"
-	},
-	"directories": {
-		"example": "examples",
-		"test": "test"
-	},
-	"xo": {
-		"envs": [
-			"node",
-			"mocha"
-		],
-		"rules": {
-			"linebreak-style": "off",
-			"unicode-bom": "off",
-			"arrow-parens": [
-				"error",
-				"always"
-			],
-			"import/no-unresolved": "off",
-			"no-use-extend-native/no-use-extend-native": "off",
-			"new-cap": "off"
-		}
+  "name": "postmaster-general",
+  "version": "2.0.0",
+  "description": "A simple library for making microservice message bus calls using Node.js over RabbitMQ.",
+  "author": "Ben Whatley",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/darklordzw/postmaster-general.git"
+  },
+  "keywords": [
+    "rabbitmq",
+    "microservices",
+    "message bus"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/darklordzw/postmaster-general/issues"
+  },
+  "homepage": "https://github.com/darklordzw/postmaster-general#readme",
+  "main": "postmaster-general.js",
+  "files": [
+    "postmaster-general.js",
+    "defaults.json"
+  ],
+  "scripts": {
+    "test": "gulp test",
+    "validate": "gulp validate"
+  },
+  "dependencies": {
+    "bluebird": "^3.5.0",
+    "bunyan": "^1.8.10",
+    "rabbot": "^1.1.0",
+    "uuid": "^3.1.0"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "chai3-json-schema": "^1.2.1",
+    "dirty-chai": "^1.2.2",
+    "gulp": "^3.9.1",
+    "gulp-test-rigging": "0.0.5",
+    "sinon": "^1.17.7",
+    "sinon-bluebird": "^3.1.0",
+    "sinon-chai": "^2.11.0"
+  },
+  "directories": {
+    "example": "examples",
+    "test": "test"
+  },
+  "xo": {
+    "envs": [
+      "node",
+      "mocha"
+    ],
+    "rules": {
+      "linebreak-style": "off",
+      "unicode-bom": "off",
+      "arrow-parens": [
+        "error",
+        "always"
+      ],
+      "import/no-unresolved": "off",
+      "no-use-extend-native/no-use-extend-native":  "off"
 	}
+  }
 }

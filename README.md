@@ -1,8 +1,7 @@
 ﻿# postmaster-general
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/darklordzw/postmaster-general/blob/master/LICENSE.md)
 
-Simple, promise-based Node.js library, for microservice communication over [AMQP][1].
-Supports both "fire-and-forget" and RPC calling patterns. Inspired by [seneca-amqp-transport][3].
+Simple, promise-based Node.js library, for microservice communication over [AMQP][1] using [rabbot][3].
 
 Note: Version 1.0.0 of this library represents a big departure from version 0.2.0. Be sure to check out
 the examples to make sure you're migrating properly.
@@ -49,5 +48,5 @@ Licensed under the [MIT][2] license.
 
 [1]: https://www.amqp.org/ 
 [2]: ./LICENSE.md
-[3]: https://github.com/senecajs/seneca-amqp-transport/
+[3]: https://github.com/arobson/rabbot
 [4]: https://www.rabbitmq.com/tutorials/tutorial-five-python.html
