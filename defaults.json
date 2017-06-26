@@ -5,8 +5,7 @@
 	"exchanges": [
 		{
 			"name": "postmaster.topic",
-			"type": "topic",
-			"replyTimeout": 60000
+			"type": "topic"
 		},
 		{
 			"name": "postmaster.dlx",
@@ -17,7 +16,7 @@
 		{
 			"name": "postmaster.sub",
 			"subscribe": true,
-			"messageTtl": 30000,
+			"messageTtl": 60000,
 			"deadLetter": "postmaster.dlx"
 		}
 	]

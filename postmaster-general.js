@@ -43,11 +43,13 @@ class PostmasterGeneral {
 		if (typeof options.limit !== 'undefined') {
 			listenerQueue.limit = options.limit;
 		}
+		if (typeof options.messageTtl !== 'undefined') {
+			listenerQueue.messageTtl = options.messageTtl;
+		}
 
 		// Set options for publishing.
-		if (typeof options.replyTimeout !== 'undefined') {
-			this.settings.exchanges[0].replyTimeout = options.replyTimeout;
-		}
+		this.settings.connection.replyTimeout = listenerQueue.messageTtl;
+
 		const replyQueueName = options.replyQueue || 'queue';
 		this.settings.connection.replyQueue = `postmaster.reply.${replyQueueName}.${uuid.v4()}`;
 
