@@ -6,19 +6,22 @@
  *
  * @module postmaster-general
  */
+const EventEmitter = require('events');
 const rabbit = require('rabbot');
 const Promise = require('bluebird');
 const uuid = require('uuid');
 const bunyan = require('bunyan');
 const defaults = require('./defaults');
 
-class PostmasterGeneral {
+class PostmasterGeneral extends EventEmitter {
 	/**
 	 * Constructor function for the PostmasterGeneral object.
 	 * @param {string} queueName
 	 * @param {object} [options]
 	 */
 	constructor(queueName, options) {
+		super();
+
 		options = options || {};
 		this.settings = defaults;
 
@@ -84,7 +87,7 @@ class PostmasterGeneral {
 		});
 		this.rabbit.on('unreachable', () => {
 			this.logger.error('postmaster-general is unable to reach RabbitMQ!');
-			this.emit('unreachable', this);
+			this.emit('unreachable');
 		});
 
 		// Store a list of message handlers.
