@@ -47,6 +47,13 @@ class PostmasterGeneral {
 			listenerQueue.messageTtl = options.messageTtl;
 		}
 
+		// Only allow listening on two exchanges: postmaster.topic and postmaster.dlx.
+		if (options.exchange === 'postmaster.dlx') {
+			this.listenExchangeName = this.settings.exchanges[1].name;
+		} else {
+			this.listenExchangeName = this.settings.exchanges[0].name;
+		}
+
 		// Set options for publishing.
 		this.settings.connection.replyTimeout = listenerQueue.messageTtl;
 
@@ -93,7 +100,7 @@ class PostmasterGeneral {
 			.then(() => {
 				const promises = [];
 				for (let topic of Object.keys(this.listeners)) {
-					promises.push(this.rabbit.bindQueue(this.settings.exchanges[0].name, this.settings.queues[0].name, topic));
+					promises.push(this.rabbit.bindQueue(this.listenExchangeName, this.settings.queues[0].name, topic));
 				}
 				return Promise.all(promises);
 			})
