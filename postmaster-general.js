@@ -181,7 +181,8 @@ class PostmasterGeneral extends EventEmitter {
 			headers: {
 				requestId: args.requestId || uuid.v4(),
 				trace: args.trace
-			}
+			},
+			correlationId: args.correlationId || uuid.v4()
 		};
 
 		// If we want a reply, call request.
@@ -229,6 +230,7 @@ class PostmasterGeneral extends EventEmitter {
 						const replyTo = message.properties.replyTo;
 						const requestId = message.properties.headers.requestId;
 						const trace = message.properties.headers.trace;
+						const correlationId = message.properties.correlationId;
 
 						// To make things easier on ourselves, convert the callback to a promise.
 						const promiseCallback = Promise.promisify(callback, {context: context});
@@ -240,7 +242,7 @@ class PostmasterGeneral extends EventEmitter {
 							.then((reply) => {
 								this.logger.trace({address: address, message: message}, 'postmaster-general processed callback for message.');
 
-								if (replyTo) {
+								if (replyTo && correlationId) {
 									message.reply(reply, {headers: {requestId: requestId, trace: trace}});
 								} else {
 									message.ack();
