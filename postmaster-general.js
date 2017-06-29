@@ -174,7 +174,6 @@ class PostmasterGeneral extends EventEmitter {
 	request(address, message, args) {
 		args = args || {};
 
-		const correlationId = args.correlationId || uuid.v4();
 		const exchange = this.settings.exchanges[0].name;
 		const options = {
 			type: this.resolveTopic(address),
@@ -183,8 +182,7 @@ class PostmasterGeneral extends EventEmitter {
 				requestId: args.requestId || uuid.v4(),
 				trace: args.trace
 			},
-			correlationId: correlationId,
-			messageId: correlationId
+			correlationId: args.correlationId || uuid.v4()
 		};
 
 		// If we want a reply, call request.
@@ -233,6 +231,7 @@ class PostmasterGeneral extends EventEmitter {
 						const requestId = message.properties.headers.requestId;
 						const trace = message.properties.headers.trace;
 						const correlationId = message.properties.correlationId;
+						const messageId = message.properties.messageId;
 
 						// To make things easier on ourselves, convert the callback to a promise.
 						const promiseCallback = Promise.promisify(callback, {context: context});
@@ -246,7 +245,9 @@ class PostmasterGeneral extends EventEmitter {
 
 								if (replyTo && correlationId) {
 									// Make sure messsageId and correlationId match, for backwards-compatibility.
-									message.properties.messageId = correlationId;
+									if (!messageId) {
+										message.properties.messageId = correlationId;
+									}
 
 									message.reply(reply, {headers: {requestId: requestId, trace: trace}});
 								} else {
