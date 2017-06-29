@@ -174,6 +174,7 @@ class PostmasterGeneral extends EventEmitter {
 	request(address, message, args) {
 		args = args || {};
 
+		const correlationId = args.correlationId || uuid.v4();
 		const exchange = this.settings.exchanges[0].name;
 		const options = {
 			type: this.resolveTopic(address),
@@ -182,7 +183,8 @@ class PostmasterGeneral extends EventEmitter {
 				requestId: args.requestId || uuid.v4(),
 				trace: args.trace
 			},
-			correlationId: args.correlationId || uuid.v4()
+			correlationId: correlationId,
+			messageId: correlationId
 		};
 
 		// If we want a reply, call request.
@@ -243,6 +245,9 @@ class PostmasterGeneral extends EventEmitter {
 								this.logger.trace({address: address, message: message}, 'postmaster-general processed callback for message.');
 
 								if (replyTo && correlationId) {
+									// Make sure messsageId and correlationId match, for backwards-compatibility.
+									message.properties.messageId = correlationId;
+
 									message.reply(reply, {headers: {requestId: requestId, trace: trace}});
 								} else {
 									message.ack();
