@@ -94,7 +94,7 @@ class PostmasterGeneral extends EventEmitter {
 		this.listeners = {};
 
 		// If set, this will cause postmaster-general to log a warning when a message takes too long to ack.
-		this.settings.ackWarnTimeout = options.ackWarnTimeout;
+		this.settings.ackWarnTimeout = 1000;
 	}
 
 	/**
@@ -255,7 +255,7 @@ class PostmasterGeneral extends EventEmitter {
 
 						// If we have the ack timer enabled, start it up.
 						let ackTimeout = this.settings.ackWarnTimeout ? setTimeout(() => {
-							this.logger.warn({address: address, message: message}, 'postmaster-general hit the ACK timeout for a listener!');
+							this.logger.error({address: address, message: message}, 'postmaster-general hit the ACK timeout for a listener!');
 						}, this.settings.ackWarnTimeout) : null;
 
 						return promiseCallback(body)
