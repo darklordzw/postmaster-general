@@ -92,9 +92,6 @@ class PostmasterGeneral extends EventEmitter {
 
 		// Store a list of message handlers.
 		this.listeners = {};
-
-		// If set, this will cause postmaster-general to log a warning when a message takes too long to ack.
-		this.settings.ackWarnTimeout = 1000;
 	}
 
 	/**
@@ -188,11 +185,6 @@ class PostmasterGeneral extends EventEmitter {
 			correlationId: args.correlationId || uuid.v4()
 		};
 
-		// If we have the ack timer enabled, start it up.
-		let ackTimeout = this.settings.ackWarnTimeout ? setTimeout(() => {
-			this.logger.warn({address: address, message: message}, 'postmaster-general hit the ACK timeout for a publisher request!');
-		}, this.settings.ackWarnTimeout) : null;
-
 		// If we want a reply, call request.
 		this.logger.trace({address: address, message: message}, `postmaster-general sent RPC call.`);
 		return this.rabbit.request(exchange, options)
@@ -210,12 +202,6 @@ class PostmasterGeneral extends EventEmitter {
 			.catch((err) => {
 				this.logger.error({err: err, address: address, message: message}, `postmaster-general failed to send RPC call!`);
 				throw err;
-			})
-			.then((body) => {
-				if (ackTimeout) {
-					clearTimeout(ackTimeout);
-				}
-				return body;
 			});
 	}
 
@@ -224,8 +210,9 @@ class PostmasterGeneral extends EventEmitter {
 	 * @param {string} address - The message address.
 	 * @param {function} callback - The callback function that handles the message.
 	 * @param {object} [context] - The object to use as the "this" context during execution of the callback function.
+	 * @param {boolean} [bindQueue] - If true, go ahead and call "bindQueue" for the listener.
 	 */
-	addListener(address, callback, context) {
+	addListener(address, callback, context, bindQueue) {
 		const topic = this.resolveTopic(address);
 
 		return new Promise((resolve, reject) => {
@@ -234,70 +221,71 @@ class PostmasterGeneral extends EventEmitter {
 					type: topic,
 					context: this,
 					handler: function (message) {
-						if (!message.body) {
-							throw new Error('Missing field "body" for message!');
-						}
+						try {
+							if (!message.body) {
+								throw new Error('Missing field "body" for message!');
+							}
 
-						message.properties = message.properties || {};
-						message.properties.headers = message.properties.headers || {};
+							message.properties = message.properties || {};
+							message.properties.headers = message.properties.headers || {};
 
-						const replyTo = message.properties.replyTo;
-						const requestId = message.properties.headers.requestId;
-						const trace = message.properties.headers.trace;
-						const correlationId = message.properties.correlationId;
-						const messageId = message.properties.messageId;
+							const replyTo = message.properties.replyTo;
+							const requestId = message.properties.headers.requestId;
+							const trace = message.properties.headers.trace;
+							const correlationId = message.properties.correlationId;
+							const messageId = message.properties.messageId;
 
-						// To make things easier on ourselves, convert the callback to a promise.
-						const promiseCallback = Promise.promisify(callback, {context: context});
-						const body = message.body;
-						body.$requestId = requestId;
-						body.$trace = trace;
+							// To make things easier on ourselves, convert the callback to a promise.
+							const promiseCallback = Promise.promisify(callback, {context: context});
+							const body = message.body;
+							body.$requestId = requestId;
+							body.$trace = trace;
 
-						// If we have the ack timer enabled, start it up.
-						let ackTimeout = this.settings.ackWarnTimeout ? setTimeout(() => {
-							this.logger.error({address: address, message: message}, 'postmaster-general hit the ACK timeout for a listener!');
-						}, this.settings.ackWarnTimeout) : null;
+							return promiseCallback(body)
+								.then((reply) => {
+									this.logger.trace({address: address, message: message}, 'postmaster-general processed callback for message.');
 
-						return promiseCallback(body)
-							.then((reply) => {
-								this.logger.trace({address: address, message: message}, 'postmaster-general processed callback for message.');
-
-								// If we have an error that should be returned to the caller, log it and convert the error to a string.
-								if (reply && reply.err) {
-									this.logger.error({err: reply.err, address: address, message: message}, 'postmaster-general callback returned an error!');
-									reply.err = reply.err.message || reply.err.name;
-								}
-
-								if (replyTo && correlationId) {
-									// Make sure messsageId and correlationId match, for backwards-compatibility.
-									if (!messageId) {
-										message.properties.messageId = correlationId;
+									// If we have an error that should be returned to the caller, log it and convert the error to a string.
+									if (reply && reply.err) {
+										this.logger.error({err: reply.err, address: address, message: message}, 'postmaster-general callback returned an error!');
+										reply.err = reply.err.message || reply.err.name;
 									}
 
-									message.reply(reply, {headers: {requestId: requestId, trace: trace}});
-								} else {
-									message.ack();
-								}
-							})
-							.catch((err) => {
-								this.logger.error({err: err, address: address, message: message}, 'postmaster-general encountered error processing callback!');
-								message.reject();
-							})
-							.then(() => {
-								if (ackTimeout) {
-									clearTimeout(ackTimeout);
-								}
-							});
+									if (replyTo && correlationId) {
+										// Make sure messsageId and correlationId match, for backwards-compatibility.
+										if (!messageId) {
+											message.properties.messageId = correlationId;
+										}
+
+										message.reply(reply, {headers: {requestId: requestId, trace: trace}});
+									} else {
+										message.ack();
+									}
+								})
+								.catch((err) => {
+									this.logger.error({err: err, address: address, message: message}, 'postmaster-general encountered error processing callback!');
+									message.reject();
+								});
+						} catch (err) {
+							this.logger.error({err: err, address: address, message: message}, 'postmaster-general encountered error processing callback!');
+							message.reject();
+						}
 					}
 				});
 
-				// Add a sanity-check error handler for the listener, in case an exception is thrown that's not caught in the promise.
-				this.listeners[topic].catch((err, message) => {
-					this.logger.error({err: err, address: address, message: message}, 'postmaster-general encountered error processing callback!');
-					message.reject();
-				});
-
-				resolve();
+				// Bind the queue, if we need to.
+				if (bindQueue) {
+					this.rabbit.bindQueue(this.listenExchangeName, this.settings.queues[0].name, topic)
+						.then(() => {
+							resolve();
+						})
+						.catch((err) => {
+							this.logger.error({err: err, address: address}, 'postmaster-general encountered error while registering a listener!');
+							reject(err);
+						});
+				} else {
+					resolve();
+				}
 			} catch (err) {
 				this.logger.error({err: err, address: address}, 'postmaster-general encountered error while registering a listener!');
 				reject(err);
@@ -317,8 +305,19 @@ class PostmasterGeneral extends EventEmitter {
 				const handler = this.listeners[topic];
 				if (handler) {
 					handler.remove();
-					delete this.listeners[topic];
-					this.logger.info({address: address}, 'postmaster-general removed listener callback.');
+
+					return this.rabbit.connections.default.connection.getChannel('control', false, 'control channel for bindings')
+						.then((channel) => channel.unbindQueue(`queue:${this.settings.queues[0].name}`, this.listenExchangeName, topic))
+						.then(() => {
+							delete this.listeners[topic];
+
+							this.logger.info({address: address}, 'postmaster-general removed listener callback.');
+							resolve();
+						})
+						.catch((err) => {
+							this.logger.error({err: err, address: address}, 'postmaster-general encountered error while removing a listener!');
+							reject(err);
+						});
 				}
 				resolve();
 			} catch (err) {
