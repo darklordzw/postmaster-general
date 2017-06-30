@@ -263,7 +263,7 @@ class PostmasterGeneral extends EventEmitter {
 								this.logger.trace({address: address, message: message}, 'postmaster-general processed callback for message.');
 
 								// If we have an error that should be returned to the caller, log it and convert the error to a string.
-								if (reply.err) {
+								if (reply && reply.err) {
 									this.logger.error({err: reply.err, address: address, message: message}, 'postmaster-general callback returned an error!');
 									reply.err = reply.err.message || reply.err.name;
 								}
