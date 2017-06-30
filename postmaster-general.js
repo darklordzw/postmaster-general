@@ -92,6 +92,9 @@ class PostmasterGeneral extends EventEmitter {
 
 		// Store a list of message handlers.
 		this.listeners = {};
+
+		// If set, this will cause postmaster-general to log a warning when a message takes too long to ack.
+		this.settings.ackWarnTimeout = options.ackWarnTimeout;
 	}
 
 	/**
@@ -185,6 +188,11 @@ class PostmasterGeneral extends EventEmitter {
 			correlationId: args.correlationId || uuid.v4()
 		};
 
+		// If we have the ack timer enabled, start it up.
+		let ackTimeout = this.settings.ackWarnTimeout ? setTimeout(() => {
+			this.logger.warn({address: address, message: message}, 'postmaster-general hit the ACK timeout for a publisher request!');
+		}, this.settings.ackWarnTimeout) : null;
+
 		// If we want a reply, call request.
 		this.logger.trace({address: address, message: message}, `postmaster-general sent RPC call.`);
 		return this.rabbit.request(exchange, options)
@@ -202,6 +210,12 @@ class PostmasterGeneral extends EventEmitter {
 			.catch((err) => {
 				this.logger.error({err: err, address: address, message: message}, `postmaster-general failed to send RPC call!`);
 				throw err;
+			})
+			.then((body) => {
+				if (ackTimeout) {
+					clearTimeout(ackTimeout);
+				}
+				return body;
 			});
 	}
 
@@ -239,9 +253,20 @@ class PostmasterGeneral extends EventEmitter {
 						body.$requestId = requestId;
 						body.$trace = trace;
 
+						// If we have the ack timer enabled, start it up.
+						let ackTimeout = this.settings.ackWarnTimeout ? setTimeout(() => {
+							this.logger.warn({address: address, message: message}, 'postmaster-general hit the ACK timeout for a listener!');
+						}, this.settings.ackWarnTimeout) : null;
+
 						return promiseCallback(body)
 							.then((reply) => {
 								this.logger.trace({address: address, message: message}, 'postmaster-general processed callback for message.');
+
+								// If we have an error that should be returned to the caller, log it and convert the error to a string.
+								if (reply.err) {
+									this.logger.error({err: reply.err, address: address, message: message}, 'postmaster-general callback returned an error!');
+									reply.err = reply.err.message || reply.err.name;
+								}
 
 								if (replyTo && correlationId) {
 									// Make sure messsageId and correlationId match, for backwards-compatibility.
@@ -257,6 +282,11 @@ class PostmasterGeneral extends EventEmitter {
 							.catch((err) => {
 								this.logger.error({err: err, address: address, message: message}, 'postmaster-general encountered error processing callback!');
 								message.reject();
+							})
+							.then(() => {
+								if (ackTimeout) {
+									clearTimeout(ackTimeout);
+								}
 							});
 					}
 				});
