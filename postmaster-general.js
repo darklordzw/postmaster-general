@@ -218,6 +218,9 @@ class PostmasterGeneral extends EventEmitter {
 	addListener(address, callback, context, bindQueue) {
 		const topic = this.resolveTopic(address);
 
+		// To make things easier on ourselves, convert the callback to a promise.
+		const promiseCallback = Promise.promisify(callback, {context: context});
+
 		return new Promise((resolve, reject) => {
 			try {
 				this.listeners[topic] = this.rabbit.handle({
@@ -237,14 +240,12 @@ class PostmasterGeneral extends EventEmitter {
 							const trace = message.properties.headers.trace;
 							const correlationId = message.properties.correlationId;
 							const messageId = message.properties.messageId;
-
-							// To make things easier on ourselves, convert the callback to a promise.
-							const promiseCallback = Promise.promisify(callback, {context: context});
 							const body = message.body;
 							body.$requestId = requestId;
 							body.$trace = trace;
 
 							return promiseCallback(body)
+								.timeout(this.settings.queues[0].messageTtl, 'Message handler timed out!')
 								.then((reply) => {
 									this.logger.trace({address: address, message: message}, 'postmaster-general processed callback for message.');
 
