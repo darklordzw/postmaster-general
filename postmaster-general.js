@@ -95,6 +95,11 @@ class PostmasterGeneral extends EventEmitter {
 
 		// Store a list of message handlers.
 		this.listeners = {};
+
+		// Store a collection of handler timings.
+		this.handlerTimings = {};
+		this.handlerTimingsTimeout = null;
+		this.handlerTimingsInterval = 30000;
 	}
 
 	/**
@@ -111,6 +116,7 @@ class PostmasterGeneral extends EventEmitter {
 				return Promise.all(promises);
 			})
 			.then(() => {
+				this.resetHandlerTimings();
 				this.logger.info('postmaster-general started.');
 			})
 			.catch((err) => {
@@ -125,11 +131,24 @@ class PostmasterGeneral extends EventEmitter {
 	stop() {
 		this.logger.info('Shutting down postmaster-general...');
 		return this.rabbit.shutdown().then(() => {
+			if (this.handlerTimingsTimeout) {
+				clearTimeout(this.handlerTimingsTimeout);
+			}
 			this.logger.info('postmaster-general shutdown successfully.');
 		})
 			.catch((err) => {
 				this.logger.warn({err: err}, 'postmaster-general encountered error when trying to shutdown!');
 			});
+	}
+
+	/**
+	 * Called periodically to reset the handler timing metrics.
+	 */
+	resetHandlerTimings() {
+		this.handlerTimings = {};
+		this.handlerTimingsTimeout = setTimeout(() => {
+			this.resetHandlerTimings();
+		}, this.handlerTimingsInterval);
 	}
 
 	/**
@@ -227,6 +246,8 @@ class PostmasterGeneral extends EventEmitter {
 					type: topic,
 					context: this,
 					handler: function (message) {
+						const start = new Date().getTime();
+
 						try {
 							if (!message.body) {
 								throw new Error('Missing field "body" for message!');
@@ -269,10 +290,29 @@ class PostmasterGeneral extends EventEmitter {
 								.catch((err) => {
 									this.logger.error({err: err, address: address, message: message}, 'postmaster-general encountered error processing callback!');
 									message.reject();
+								})
+								.then(() => {
+									// Calculate the elapsed time.
+									const elapsed = new Date().getTime() - start;
+									this.handlerTimings[address] = this.handlerTimings[address] || {
+										messageCount: 0,
+										elapsedTime: 0
+									};
+									this.handlerTimings[address].messageCount++;
+									this.handlerTimings[address].elapsedTime += elapsed;
 								});
 						} catch (err) {
 							this.logger.error({err: err, address: address, message: message}, 'postmaster-general encountered error processing callback!');
 							message.reject();
+
+							// Calculate the elapsed time.
+							const elapsed = new Date().getTime() - start;
+							this.handlerTimings[address] = this.handlerTimings[address] || {
+								messageCount: 0,
+								elapsedTime: 0
+							};
+							this.handlerTimings[address].messageCount++;
+							this.handlerTimings[address].elapsedTime += elapsed;
 						}
 					}
 				});
