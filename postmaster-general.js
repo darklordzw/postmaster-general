@@ -233,9 +233,11 @@ class PostmasterGeneral extends EventEmitter {
 	 * @param {function} callback - The callback function that handles the message.
 	 * @param {object} [context] - The object to use as the "this" context during execution of the callback function.
 	 * @param {boolean} [bindQueue] - If true, go ahead and call "bindQueue" for the listener.
+	 * @param {boolean} [exchangeName] - The name of the exchange to bind to.
 	 */
-	addListener(address, callback, context, bindQueue) {
+	addListener(address, callback, context, bindQueue, exchangeName) { // eslint-disable-line max-params
 		const topic = this.resolveTopic(address);
+		const exchange = exchangeName || this.listenExchangeName;
 
 		// To make things easier on ourselves, convert the callback to a promise.
 		const promiseCallback = Promise.promisify(callback, {context: context});
@@ -319,7 +321,7 @@ class PostmasterGeneral extends EventEmitter {
 
 				// Bind the queue, if we need to.
 				if (bindQueue) {
-					this.rabbit.bindQueue(this.listenExchangeName, this.settings.queues[0].name, topic)
+					this.rabbit.bindQueue(exchange, this.settings.queues[0].name, topic)
 						.then(() => {
 							resolve();
 						})
@@ -340,9 +342,11 @@ class PostmasterGeneral extends EventEmitter {
 	/**
 	 * Called to unbind a new listener from the queue.
 	 * @param {string} address - The message address.
+	 * @param {string} [exchangeName] - The exchange name.
 	 */
-	removeListener(address) {
+	removeListener(address, exchangeName) {
 		const topic = this.resolveTopic(address);
+		const exchange = exchangeName || this.listenExchangeName;
 
 		return new Promise((resolve, reject) => {
 			try {
@@ -351,7 +355,7 @@ class PostmasterGeneral extends EventEmitter {
 					handler.remove();
 
 					return this.rabbit.connections.default.connection.getChannel('control', false, 'control channel for bindings')
-						.then((channel) => channel.unbindQueue(`queue:${this.settings.queues[0].name}`, this.listenExchangeName, topic))
+						.then((channel) => channel.unbindQueue(`queue:${this.settings.queues[0].name}`, exchange, topic))
 						.then(() => {
 							delete this.listeners[topic];
 
