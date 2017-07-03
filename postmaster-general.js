@@ -58,7 +58,10 @@ class PostmasterGeneral extends EventEmitter {
 		}
 
 		// Set options for publishing.
-		this.settings.connection.replyTimeout = listenerQueue.messageTtl;
+		if (typeof options.publishTimeout !== 'undefined') {
+			this.settings.connection.publishTimeout = options.publishTimeout;
+		}
+		this.settings.connection.replyTimeout = this.settings.connection.publishTimeout * 2;
 
 		const replyQueueName = options.replyQueue || 'queue';
 		this.settings.connection.replyQueue = `postmaster.reply.${replyQueueName}.${uuid.v4()}`;
