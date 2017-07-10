@@ -269,6 +269,7 @@ class PostmasterGeneral extends EventEmitter {
 							const body = message.body;
 							body.$requestId = requestId;
 							body.$trace = trace;
+							body.$address = address;
 
 							return promiseCallback(body)
 								.timeout(this.settings.queues[0].messageTtl, 'Message handler timed out!')
