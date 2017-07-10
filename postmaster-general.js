@@ -67,7 +67,13 @@ class PostmasterGeneral extends EventEmitter {
 		this.settings.connection.replyTimeout = this.settings.connection.publishTimeout * 2;
 
 		const replyQueueName = options.replyQueue || 'queue';
-		this.settings.connection.replyQueue = `postmaster.reply.${replyQueueName}.${uuid.v4()}`;
+		this.settings.connection.replyQueue = {
+			name: `postmaster.reply.${replyQueueName}.${uuid.v4()}`,
+			subscribe: true,
+			durable: true,
+			autoDelete: true,
+			noAck: true
+		};
 
 		// Postmaster expects loggers to be syntactially-compatible with the excellent Bunyan library.
 		this.logger = options.logger;
