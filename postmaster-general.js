@@ -387,6 +387,13 @@ class PostmasterGeneral extends EventEmitter {
 			}
 		});
 	}
+
+	/**
+	 * Called to stop listening to messages and prepare for shutdown.
+	 */
+	drainListeners() {
+		return this.rabbit.stopSubscription(this.settings.queues[0].name);
+	}
 }
 
 module.exports = PostmasterGeneral;
