@@ -52,6 +52,9 @@ class PostmasterGeneral extends EventEmitter {
 		if (typeof options.noAck !== 'undefined') {
 			listenerQueue.noAck = options.noAck;
 		}
+		if (typeof options.noBatch !== 'undefined') {
+			listenerQueue.noBatch = options.noBatch;
+		}
 
 		// Only allow listening on two exchanges: postmaster.topic and postmaster.dlx.
 		if (options.exchange === 'postmaster.dlx') {
