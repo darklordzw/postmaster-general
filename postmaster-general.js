@@ -7,10 +7,9 @@
  * @module postmaster-general
  */
 const EventEmitter = require('events');
-const rabbit = require('rabbot');
 const Promise = require('bluebird');
 const uuid = require('uuid');
-const bunyan = require('bunyan');
+const log4js = require('log4js');
 const defaults = require('./defaults');
 
 class PostmasterGeneral extends EventEmitter {
@@ -78,20 +77,22 @@ class PostmasterGeneral extends EventEmitter {
 			noAck: true
 		};
 
-		// Postmaster expects loggers to be syntactially-compatible with the excellent Bunyan library.
+		// Postmaster expects loggers to be syntactially-compatible with the excellent log4js library.
 		this.logger = options.logger;
 		if (!this.logger) {
-			this.logger = bunyan.createLogger({
-				name: 'postmaster-general',
-				serializers: {err: bunyan.stdSerializers.err}
-			});
+			this.logger = log4js.getLogger();
 
 			// Default log level to info.
-			this.logger.level(options.logLevel || 'info');
+			this.logger.level = options.logLevel || 'info';
+		}
+
+		// Set logging for Rabbot, if "debug" is specified.
+		if (this.logger.level === 'debug') {
+			process.env.DEBUG = 'rabbot.*';
 		}
 
 		// Store a reference to rabbot.
-		this.rabbit = rabbit;
+		this.rabbit = require('rabbot');
 
 		// We want to automatically send all unhandled messages and errors to the dead letter queue.
 		this.rabbit.rejectUnhandled();
@@ -132,7 +133,7 @@ class PostmasterGeneral extends EventEmitter {
 				this.logger.info('postmaster-general started.');
 			})
 			.catch((err) => {
-				this.logger.error({err: err}, 'postmaster-general failed to start!');
+				this.logger.error('postmaster-general failed to start!', err);
 				throw err;
 			});
 	}
@@ -149,7 +150,7 @@ class PostmasterGeneral extends EventEmitter {
 			this.logger.info('postmaster-general shutdown successfully.');
 		})
 			.catch((err) => {
-				this.logger.warn({err: err}, 'postmaster-general encountered error when trying to shutdown!');
+				this.logger.warn('postmaster-general encountered error when trying to shutdown!', err);
 			});
 	}
 
@@ -191,9 +192,9 @@ class PostmasterGeneral extends EventEmitter {
 			}
 		};
 
-		this.logger.trace({address: address, message: message}, `Sent fire-and-forget message.`);
+		this.logger.debug(`Sent fire-and-forget message.`, {address: address, message: message});
 		return this.rabbit.publish(exchange, options).catch((err) => {
-			this.logger.error({err: err, address: address, message: message}, `postmaster-general failed to send fire-and-forget message!`);
+			this.logger.error(`postmaster-general failed to send fire-and-forget message!`, {address: address, message: message}, err);
 			throw err;
 		});
 	}
@@ -220,7 +221,7 @@ class PostmasterGeneral extends EventEmitter {
 		};
 
 		// If we want a reply, call request.
-		this.logger.trace({address: address, message: message}, `postmaster-general sent RPC call.`);
+		this.logger.debug(`postmaster-general sent RPC call.`, {address: address, message: message});
 		return this.rabbit.request(exchange, options)
 			.then((reply) => {
 				reply.ack();
@@ -234,7 +235,7 @@ class PostmasterGeneral extends EventEmitter {
 				return body;
 			})
 			.catch((err) => {
-				this.logger.error({err: err, address: address, message: message}, `postmaster-general failed to send RPC call!`);
+				this.logger.error(`postmaster-general failed to send RPC call!`, {address: address, message: message}, err);
 				throw err;
 			});
 	}
@@ -247,7 +248,7 @@ class PostmasterGeneral extends EventEmitter {
 	 * @param {boolean} [bindQueue] - If true, go ahead and call "bindQueue" for the listener.
 	 * @param {boolean} [exchangeName] - The name of the exchange to bind to.
 	 */
-	addListener(address, callback, context, bindQueue, exchangeName) { // eslint-disable-line max-params
+	addListener(address, callback, context, bindQueue, exchangeName) {// eslint-disable-line max-params
 		const topic = this.resolveTopic(address);
 		const exchange = exchangeName || this.listenExchangeName;
 
@@ -283,11 +284,11 @@ class PostmasterGeneral extends EventEmitter {
 							return promiseCallback(body)
 								.timeout(this.settings.queues[0].messageTtl, 'Message handler timed out!')
 								.then((reply) => {
-									this.logger.trace({address: address, message: message}, 'postmaster-general processed callback for message.');
+									this.logger.debug('postmaster-general processed callback for message.', {address: address, message: body});
 
 									// If we have an error that should be returned to the caller, log it and convert the error to a string.
 									if (reply && reply.err) {
-										this.logger.error({err: reply.err, address: address, message: message}, 'postmaster-general callback returned an error!');
+										this.logger.error('postmaster-general callback returned an error!', {address: address, message: body}, reply.err);
 										reply.err = reply.err.message || reply.err.name;
 									}
 
@@ -303,7 +304,7 @@ class PostmasterGeneral extends EventEmitter {
 									}
 								})
 								.catch((err) => {
-									this.logger.error({err: err, address: address, message: message}, 'postmaster-general encountered error processing callback!');
+									this.logger.error('postmaster-general encountered error processing callback!', {address: address, message: body}, err);
 									message.reject();
 								})
 								.then(() => {
@@ -317,7 +318,7 @@ class PostmasterGeneral extends EventEmitter {
 									this.handlerTimings[address].elapsedTime += elapsed;
 								});
 						} catch (err) {
-							this.logger.error({err: err, address: address, message: message}, 'postmaster-general encountered error processing callback!');
+							this.logger.error('postmaster-general encountered error processing callback!', {address: address, message: message.body}, err);
 							message.reject();
 
 							// Calculate the elapsed time.
@@ -339,14 +340,14 @@ class PostmasterGeneral extends EventEmitter {
 							resolve();
 						})
 						.catch((err) => {
-							this.logger.error({err: err, address: address}, 'postmaster-general encountered error while registering a listener!');
+							this.logger.error('postmaster-general encountered error while registering a listener!', {address: address}, err);
 							reject(err);
 						});
 				} else {
 					resolve();
 				}
 			} catch (err) {
-				this.logger.error({err: err, address: address}, 'postmaster-general encountered error while registering a listener!');
+				this.logger.error('postmaster-general encountered error while registering a listener!', {address: address}, err);
 				reject(err);
 			}
 		});
@@ -372,17 +373,17 @@ class PostmasterGeneral extends EventEmitter {
 						.then(() => {
 							delete this.listeners[topic];
 
-							this.logger.info({address: address}, 'postmaster-general removed listener callback.');
+							this.logger.info('postmaster-general removed listener callback.', {address: address});
 							resolve();
 						})
 						.catch((err) => {
-							this.logger.error({err: err, address: address}, 'postmaster-general encountered error while removing a listener!');
+							this.logger.error('postmaster-general encountered error while removing a listener!', {address: address}, err);
 							reject(err);
 						});
 				}
 				resolve();
 			} catch (err) {
-				this.logger.error({err: err, address: address}, 'postmaster-general encountered error while removing a listener!');
+				this.logger.error('postmaster-general encountered error while removing a listener!', {address: address}, err);
 				reject(err);
 			}
 		});
