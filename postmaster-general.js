@@ -290,6 +290,11 @@ class PostmasterGeneral extends EventEmitter {
 									if (reply && reply.err) {
 										this.logger.error('postmaster-general callback returned an error!', {address: address, message: body}, reply.err);
 										reply.err = reply.err.message || reply.err.name;
+
+										// Sometimes we may want to log the error, but not send the full message to the caller (as in the case of db credentials).
+										if (reply.err && reply.cleanError) {
+											reply.err = `An error of type ${reply.cleanError} occurred during processing of the message!`;
+										}
 									}
 
 									if (replyTo && correlationId) {
