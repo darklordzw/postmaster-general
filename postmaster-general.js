@@ -317,10 +317,19 @@ class PostmasterGeneral extends EventEmitter {
 									const elapsed = new Date().getTime() - start;
 									this.handlerTimings[address] = this.handlerTimings[address] || {
 										messageCount: 0,
-										elapsedTime: 0
+										elapsedTime: 0,
+										minElapsedTime: 0,
+										maxElapsedTime: 0
 									};
 									this.handlerTimings[address].messageCount++;
 									this.handlerTimings[address].elapsedTime += elapsed;
+
+									if (this.handlerTimings[address].minElapsedTime > elapsed) {
+										this.handlerTimings[address].minElapsedTime = elapsed;
+									}
+									if (this.handlerTimings[address].maxElapsedTime < elapsed) {
+										this.handlerTimings[address].maxElapsedTime = elapsed;
+									}
 								});
 						} catch (err) {
 							this.logger.error('postmaster-general encountered error processing callback!', {address: address, message: message.body}, err);
@@ -330,10 +339,19 @@ class PostmasterGeneral extends EventEmitter {
 							const elapsed = new Date().getTime() - start;
 							this.handlerTimings[address] = this.handlerTimings[address] || {
 								messageCount: 0,
-								elapsedTime: 0
+								elapsedTime: 0,
+								minElapsedTime: 0,
+								maxElapsedTime: 0
 							};
 							this.handlerTimings[address].messageCount++;
 							this.handlerTimings[address].elapsedTime += elapsed;
+
+							if (this.handlerTimings[address].minElapsedTime > elapsed) {
+								this.handlerTimings[address].minElapsedTime = elapsed;
+							}
+							if (this.handlerTimings[address].maxElapsedTime < elapsed) {
+								this.handlerTimings[address].maxElapsedTime = elapsed;
+							}
 						}
 					}
 				});
