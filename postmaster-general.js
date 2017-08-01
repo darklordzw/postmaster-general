@@ -111,8 +111,10 @@ class PostmasterGeneral extends EventEmitter {
 
 		// Store a collection of handler timings.
 		this.handlerTimings = {};
-		this.handlerTimingsTimeout = null;
-		this.handlerTimingsInterval = 30000;
+		if (!options.manualTimingReset) {
+			this.handlerTimingsTimeout = null;
+			this.handlerTimingsInterval = 30000;
+		}
 	}
 
 	/**
@@ -159,9 +161,13 @@ class PostmasterGeneral extends EventEmitter {
 	 */
 	resetHandlerTimings() {
 		this.handlerTimings = {};
-		this.handlerTimingsTimeout = setTimeout(() => {
-			this.resetHandlerTimings();
-		}, this.handlerTimingsInterval);
+
+		// If we're not manually managing the timing refresh, schedule the next timeout.
+		if (this.handlerTimingsInterval) {
+			this.handlerTimingsTimeout = setTimeout(() => {
+				this.resetHandlerTimings();
+			}, this.handlerTimingsInterval);
+		}
 	}
 
 	/**
