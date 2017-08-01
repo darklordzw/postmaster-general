@@ -330,7 +330,8 @@ class PostmasterGeneral extends EventEmitter {
 									this.handlerTimings[address].messageCount++;
 									this.handlerTimings[address].elapsedTime += elapsed;
 
-									if (this.handlerTimings[address].minElapsedTime > elapsed) {
+									if (this.handlerTimings[address].minElapsedTime > elapsed ||
+										this.handlerTimings[address].minElapsedTime === 0) {
 										this.handlerTimings[address].minElapsedTime = elapsed;
 									}
 									if (this.handlerTimings[address].maxElapsedTime < elapsed) {
