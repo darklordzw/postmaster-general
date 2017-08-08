@@ -39,6 +39,9 @@ class PostmasterGeneral extends EventEmitter {
 		if (typeof options.autoDelete !== 'undefined') {
 			listenerQueue.autoDelete = options.autoDelete;
 		}
+		if (!listenerQueue.autoDelete) {
+			listenerQueue.expires = this.settings.queues[0].messageTtl;
+		}
 		if (typeof options.exclusive !== 'undefined') {
 			listenerQueue.exclusive = options.exclusive;
 		}
@@ -73,7 +76,8 @@ class PostmasterGeneral extends EventEmitter {
 			name: `postmaster.reply.${replyQueueName}.${uuid.v4()}`,
 			subscribe: true,
 			durable: true,
-			autoDelete: true,
+			autoDelete: false,
+			expires: this.settings.queues[0].messageTtl,
 			noAck: true
 		};
 
@@ -353,7 +357,8 @@ class PostmasterGeneral extends EventEmitter {
 							this.handlerTimings[address].messageCount++;
 							this.handlerTimings[address].elapsedTime += elapsed;
 
-							if (this.handlerTimings[address].minElapsedTime > elapsed) {
+							if (this.handlerTimings[address].minElapsedTime > elapsed ||
+								this.handlerTimings[address].minElapsedTime === 0) {
 								this.handlerTimings[address].minElapsedTime = elapsed;
 							}
 							if (this.handlerTimings[address].maxElapsedTime < elapsed) {
