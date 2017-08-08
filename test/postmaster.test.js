@@ -152,6 +152,37 @@ describe('full stack tests:', function () {
 			});
 	});
 
+	it('should handle clean healtcheck', function () {
+		return postmaster.addListener('action:get_greeting', function (message, cb) {
+			return cb(null, {
+				greeting: 'Hello, ' + message.name
+			});
+		})
+			.then(() => postmaster.start())
+			.then(() => postmaster.healthcheck())
+			.then((res) => {
+				expect(res).to.exist();
+				expect(res).to.be.true();
+			});
+	});
+
+	it('should handle failed healtcheck', function () {
+		return postmaster.addListener('action:get_greeting', function (message, cb) {
+			return cb(null, {
+				greeting: 'Hello, ' + message.name
+			});
+		})
+			.then(() => postmaster.start())
+			.then(() => {
+				postmaster.settings.queues[0].name = 'bad queue';
+			})
+			.then(() => postmaster.healthcheck())
+			.then(() => {
+				throw new Error('Failed to miss invalid healthcheck!');
+			})
+			.catch(() => {});
+	});
+
 	it('should handle fire and forget', function () {
 		return postmaster.addListener('action:get_greeting', function (message, cb) {
 			return cb(null, {

@@ -430,6 +430,27 @@ class PostmasterGeneral extends EventEmitter {
 	drainListeners() {
 		return this.rabbit.stopSubscription(this.settings.queues[0].name);
 	}
+
+	/**
+	 * Called to determine if the channels and queues used by postmaster-general are healthy.
+	 */
+	healthcheck() {
+		const listenerQueueName = this.settings.queues[0].name;
+		const replyQueueName = this.settings.connection.replyQueue.name;
+
+		return Promise.all([
+			this.rabbit.connections.default.connection.getChannel(`queue:${listenerQueueName}`)
+				.then((channel) => channel.checkQueue(listenerQueueName)),
+			this.rabbit.connections.default.connection.getChannel(`queue:${replyQueueName}`)
+				.then((channel) => channel.checkQueue(replyQueueName))
+		])
+			.then(() => {
+				return true;
+			})
+			.catch((err) => {
+				throw new Error(`Failed to confirm postmaster-general channel! Message: ${err.message}`);
+			});
+	}
 }
 
 module.exports = PostmasterGeneral;
