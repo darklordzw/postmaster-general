@@ -102,6 +102,9 @@ class PostmasterGeneral extends EventEmitter {
 		this.rabbit.rejectUnhandled();
 
 		// Add event listeners to log events from rabbot.
+		this.rabbit.on('connected', () => {
+			this.logger.info('postmaster-general connected successfully!');
+		});
 		this.rabbit.on('failed', () => {
 			this.logger.warn('postmaster-general failed to connect to RabbitMQ! Retrying...');
 		});
