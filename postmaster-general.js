@@ -407,7 +407,7 @@ class PostmasterGeneral extends EventEmitter {
 					handler.remove();
 
 					return this.rabbit.connections.default.connection.getChannel('control', false, 'control channel for bindings')
-						.then((channel) => channel.unbindQueue(`queue:${this.settings.queues[0].name}`, exchange, topic))
+						.then((channel) => channel.unbindQueue(this.settings.queues[0].name, exchange, topic))
 						.then(() => {
 							delete this.listeners[topic];
 
