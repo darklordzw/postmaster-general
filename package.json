@@ -28,8 +28,8 @@
   },
   "dependencies": {
     "bluebird": "^3.5.0",
+    "darklordzw-rabbot": "^1.1.1",
     "log4js": "^2.3.0",
-    "rabbot": "^1.1.0",
     "uuid": "^3.1.0"
   },
   "devDependencies": {

@@ -96,7 +96,7 @@ class PostmasterGeneral extends EventEmitter {
 		}
 
 		// Store a reference to rabbot.
-		this.rabbit = require('rabbot');
+		this.rabbit = require('darklordzw-rabbot');
 
 		// We want to automatically send all unhandled messages and errors to the dead letter queue.
 		this.rabbit.rejectUnhandled();
@@ -406,8 +406,7 @@ class PostmasterGeneral extends EventEmitter {
 				if (handler) {
 					handler.remove();
 
-					return this.rabbit.connections.default.connection.getChannel('control', false, 'control channel for bindings')
-						.then((channel) => channel.unbindQueue(this.settings.queues[0].name, exchange, topic))
+					return this.rabbit.unbindQueue(exchange, this.settings.queues[0].name, topic)
 						.then(() => {
 							delete this.listeners[topic];
 

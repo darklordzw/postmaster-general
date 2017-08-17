@@ -152,20 +152,6 @@ describe('full stack tests:', function () {
 			});
 	});
 
-	it('should handle clean healtcheck', function () {
-		return postmaster.addListener('action:get_greeting', function (message, cb) {
-			return cb(null, {
-				greeting: 'Hello, ' + message.name
-			});
-		})
-			.then(() => postmaster.start())
-			.then(() => postmaster.healthcheck())
-			.then((res) => {
-				expect(res).to.exist();
-				expect(res).to.be.true();
-			});
-	});
-
 	it('should handle failed healtcheck', function () {
 		return postmaster.addListener('action:get_greeting', function (message, cb) {
 			return cb(null, {
