@@ -5,8 +5,6 @@
 const chai = require('chai');
 const dirtyChai = require('dirty-chai');
 const sinon = require('sinon');
-require('sinon-bluebird');
-const sinonChai = require('sinon-chai');
 const uuid = require('uuid');
 const PostmasterGeneral = require('../postmaster-general');
 
@@ -18,7 +16,6 @@ acceptable to the linter. */
 const expect = chai.expect;
 chai.should();
 chai.use(dirtyChai);
-chai.use(sinonChai);
 
 describe('utility functions:', () => {
 	let postmaster;
@@ -75,8 +72,8 @@ describe('publisher functions:', () => {
 				})
 				.catch(() => {
 					try {
-						spyResolveTopic.should.have.been.calledOnce();
-						spyPublish.should.have.been.called();
+						expect(spyResolveTopic.calledOnce).to.be.ok;
+						expect(spyPublish.called).to.be.ok;
 						done();
 					} catch (err) {
 						done(err);
@@ -95,8 +92,8 @@ describe('publisher functions:', () => {
 			postmaster.publish('role:create', { max: 100, min: 25 })
 				.then(() => {
 					try {
-						spyResolveTopic.should.have.been.calledOnce();
-						spyPublish.should.have.been.called();
+						expect(spyResolveTopic.calledOnce).to.be.ok;
+						expect(spyPublish.called).to.be.ok;
 						done();
 					} catch (err) {
 						done(err);

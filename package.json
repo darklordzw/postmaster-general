@@ -34,13 +34,10 @@
   },
   "devDependencies": {
     "chai": "^4.1.2",
-    "chai3-json-schema": "^1.2.1",
     "dirty-chai": "^2.0.1",
     "gulp": "^3.9.1",
     "gulp-test-rigging": "^0.1.3",
-    "sinon": "^4.0.0",
-    "sinon-bluebird": "^3.1.0",
-    "sinon-chai": "^2.13.0"
+    "sinon": "^4.0.0"
   },
   "directories": {
     "example": "examples",
