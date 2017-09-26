@@ -20,56 +20,56 @@ chai.should();
 chai.use(dirtyChai);
 chai.use(sinonChai);
 
-describe('utility functions:', function () {
+describe('utility functions:', () => {
 	let postmaster;
 
-	before(function () {
+	before(() => {
 		postmaster = new PostmasterGeneral(uuid.v4());
 	});
 
 	/**
 	 * Function: resolveTopic()
 	 */
-	describe('resolveTopic:', function () {
-		it('should use a topic name starting with the action prefix', function () {
-			let topic = postmaster.resolveTopic('role:create');
+	describe('resolveTopic:', () => {
+		it('should use a topic name starting with the action prefix', () => {
+			const topic = postmaster.resolveTopic('role:create');
 			topic.should.contain('role.');
 		});
 	});
 });
 
-describe('publisher functions:', function () {
+describe('publisher functions:', () => {
 	let postmaster;
 	let sandbox;
 
-	before(function () {
+	before(() => {
 		postmaster = new PostmasterGeneral(uuid.v4());
 		return postmaster.start();
 	});
 
-	beforeEach(function () {
+	beforeEach(() => {
 		sandbox = sinon.sandbox.create();
 	});
 
-	after(function () {
+	after(() => {
 		return postmaster.stop();
 	});
 
-	afterEach(function () {
+	afterEach(() => {
 		sandbox.restore();
 	});
 
-	describe('request:', function () {
+	describe('request:', () => {
 		it('should timeout if not response is sent is true', function (done) {
 			// Default timeout is 60 seconds, wait for it.
 			this.timeout(65 * 1000);
 
 			// Setup spies
-			let spyResolveTopic = sandbox.spy(postmaster, 'resolveTopic');
-			let spyPublish = sandbox.spy(postmaster.rabbit, 'request');
+			const spyResolveTopic = sandbox.spy(postmaster, 'resolveTopic');
+			const spyPublish = sandbox.spy(postmaster.rabbit, 'request');
 
-			// publish the message
-			postmaster.request('role:create', {max: 100, min: 25})
+			// Publish the message
+			postmaster.request('role:create', { max: 100, min: 25 })
 				.then(() => {
 					done('Should have timed out while waiting on a reply!');
 				})
@@ -85,14 +85,14 @@ describe('publisher functions:', function () {
 		});
 	});
 
-	describe('publish:', function () {
-		it('should not wait for a response', function (done) {
+	describe('publish:', () => {
+		it('should not wait for a response', (done) => {
 			// Setup spies
-			let spyResolveTopic = sandbox.spy(postmaster, 'resolveTopic');
-			let spyPublish = sandbox.spy(postmaster.rabbit, 'publish');
+			const spyResolveTopic = sandbox.spy(postmaster, 'resolveTopic');
+			const spyPublish = sandbox.spy(postmaster.rabbit, 'publish');
 
-			// publish the message
-			postmaster.publish('role:create', {max: 100, min: 25})
+			// Publish the message
+			postmaster.publish('role:create', { max: 100, min: 25 })
 				.then(() => {
 					try {
 						spyResolveTopic.should.have.been.calledOnce();
@@ -109,23 +109,23 @@ describe('publisher functions:', function () {
 	});
 });
 
-describe('full stack tests:', function () {
+describe('full stack tests:', () => {
 	let postmaster;
 	let sandbox;
 
-	beforeEach(function () {
+	beforeEach(() => {
 		postmaster = new PostmasterGeneral(uuid.v4());
 		sandbox = sinon.sandbox.create();
 	});
 
-	afterEach(function () {
+	afterEach(() => {
 		sandbox.restore();
 		return postmaster.stop();
 	});
 
-	it('should allow removing listeners', function () {
-		return postmaster.addListener('action:get_greeting:*', function (message, cb) {
-			return cb(null, {greeting: 'Hello, ' + message.name});
+	it('should allow removing listeners', () => {
+		return postmaster.addListener('action:get_greeting:*', (message, cb) => {
+			return cb(null, { greeting: 'Hello, ' + message.name });
 		})
 			.then(() => {
 				Object.keys(postmaster.listeners).length.should.equal(1);
@@ -137,14 +137,14 @@ describe('full stack tests:', function () {
 			});
 	});
 
-	it('should handle rpc', function () {
-		return postmaster.addListener('action:get_greeting', function (message, cb) {
+	it('should handle rpc', () => {
+		return postmaster.addListener('action:get_greeting', (message, cb) => {
 			return cb(null, {
 				greeting: 'Hello, ' + message.name
 			});
 		})
 			.then(() => postmaster.start())
-			.then(() => postmaster.request('action:get_greeting', {name: 'Steve'}))
+			.then(() => postmaster.request('action:get_greeting', { name: 'Steve' }))
 			.then((res) => {
 				expect(res).to.exist();
 				expect(res.greeting).to.exist();
@@ -152,8 +152,8 @@ describe('full stack tests:', function () {
 			});
 	});
 
-	it('should handle failed healtcheck', function () {
-		return postmaster.addListener('action:get_greeting', function (message, cb) {
+	it('should handle failed healtcheck', () => {
+		return postmaster.addListener('action:get_greeting', (message, cb) => {
 			return cb(null, {
 				greeting: 'Hello, ' + message.name
 			});
@@ -169,21 +169,21 @@ describe('full stack tests:', function () {
 			.catch(() => {});
 	});
 
-	it('should handle fire and forget', function () {
-		return postmaster.addListener('action:get_greeting', function (message, cb) {
+	it('should handle fire and forget', () => {
+		return postmaster.addListener('action:get_greeting', (message, cb) => {
 			return cb(null, {
 				greeting: 'Hello, ' + message.name
 			});
 		})
 			.then(() => postmaster.start())
-			.then(() => postmaster.publish('action:get_greeting', {name: 'Steve'}))
+			.then(() => postmaster.publish('action:get_greeting', { name: 'Steve' }))
 			.then((res) => {
 				expect(res).to.not.exist();
 			});
 	});
 
-	it('should pass $requestId and $trace', function () {
-		return postmaster.addListener('action:get_greeting', function (message, cb) {
+	it('should pass $requestId and $trace', () => {
+		return postmaster.addListener('action:get_greeting', (message, cb) => {
 			// Check the listener side.
 			expect(message.$requestId).to.exist();
 			message.$requestId.should.equal('testId');
@@ -195,7 +195,7 @@ describe('full stack tests:', function () {
 			});
 		})
 			.then(() => postmaster.start())
-			.then(() => postmaster.request('action:get_greeting', {name: 'Steve'}, {requestId: 'testId', trace: true}))
+			.then(() => postmaster.request('action:get_greeting', { name: 'Steve' }, { requestId: 'testId', trace: true }))
 			.then((res) => {
 				expect(res).to.exist();
 				expect(res.greeting).to.exist();
@@ -213,14 +213,14 @@ describe('full stack tests:', function () {
 		// Default timeout is 60 seconds, wait for it.
 		this.timeout(125 * 1000);
 
-		return postmaster.addListener('log:*', function (message, cb) {
+		return postmaster.addListener('log:*', (message, cb) => {
 			return cb(null, {
 				greeting: 'Hello, ' + message.name
 			});
 		})
 			.then(() => postmaster.start())
 			// Test match
-			.then(() => postmaster.request('log:mytest', {name: 'Steve'}))
+			.then(() => postmaster.request('log:mytest', { name: 'Steve' }))
 			.then((res) => {
 				expect(res).to.exist();
 				expect(res.greeting).to.exist();
@@ -228,22 +228,22 @@ describe('full stack tests:', function () {
 			})
 			// Test mismatch
 			.then(() => {
-				return postmaster.request('log:mytest.another:test', {name: 'Steve'})
+				return postmaster.request('log:mytest.another:test', { name: 'Steve' })
 					.then(() => {
-						return Promise.reject('Invalid match!');
+						return Promise.reject(new Error('Invalid match!'));
 					})
 					.catch(() => {});
 			});
 	});
 
-	it('should allow # matches in listener routes', function () {
-		return postmaster.addListener('log:#', function (message, cb) {
+	it('should allow # matches in listener routes', () => {
+		return postmaster.addListener('log:#', (message, cb) => {
 			return cb(null, {
 				greeting: 'Hello, ' + message.name
 			});
 		})
 			.then(() => postmaster.start())
-			.then(() => postmaster.request('log:mytest.anotherthing:test', {name: 'Steve'}))
+			.then(() => postmaster.request('log:mytest.anotherthing:test', { name: 'Steve' }))
 			.then((res) => {
 				expect(res).to.exist();
 				expect(res.greeting).to.exist();

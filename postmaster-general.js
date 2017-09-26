@@ -132,7 +132,7 @@ class PostmasterGeneral extends EventEmitter {
 		return this.rabbit.configure(this.settings)
 			.then(() => {
 				const promises = [];
-				for (let topic of Object.keys(this.listeners)) {
+				for (const topic of Object.keys(this.listeners)) {
 					promises.push(this.rabbit.bindQueue(this.listenExchangeName, this.settings.queues[0].name, topic));
 				}
 				return Promise.all(promises);
@@ -205,9 +205,9 @@ class PostmasterGeneral extends EventEmitter {
 			}
 		};
 
-		this.logger.debug(`Sent fire-and-forget message.`, {address: address, message: message});
+		this.logger.debug(`Sent fire-and-forget message.`, { address, message });
 		return this.rabbit.publish(exchange, options).catch((err) => {
-			this.logger.error(`postmaster-general failed to send fire-and-forget message!`, {address: address, message: message}, err);
+			this.logger.error(`postmaster-general failed to send fire-and-forget message!`, { address, message }, err);
 			throw err;
 		});
 	}
@@ -234,7 +234,7 @@ class PostmasterGeneral extends EventEmitter {
 		};
 
 		// If we want a reply, call request.
-		this.logger.debug(`postmaster-general sent RPC call.`, {address: address, message: message});
+		this.logger.debug(`postmaster-general sent RPC call.`, { address, message });
 		return this.rabbit.request(exchange, options)
 			.then((reply) => {
 				reply.ack();
@@ -248,7 +248,7 @@ class PostmasterGeneral extends EventEmitter {
 				return body;
 			})
 			.catch((err) => {
-				this.logger.error(`postmaster-general failed to send RPC call!`, {address: address, message: message}, err);
+				this.logger.error(`postmaster-general failed to send RPC call!`, { address, message }, err);
 				throw err;
 			});
 	}
@@ -266,14 +266,14 @@ class PostmasterGeneral extends EventEmitter {
 		const exchange = exchangeName || this.listenExchangeName;
 
 		// To make things easier on ourselves, convert the callback to a promise.
-		const promiseCallback = Promise.promisify(callback, {context: context});
+		const promiseCallback = Promise.promisify(callback, { context });
 
 		return new Promise((resolve, reject) => {
 			try {
 				this.listeners[topic] = this.rabbit.handle({
 					type: topic,
 					context: this,
-					handler: function (message) {
+					handler(message) {
 						const start = new Date().getTime();
 
 						try {
@@ -297,11 +297,11 @@ class PostmasterGeneral extends EventEmitter {
 							return promiseCallback(body)
 								.timeout(this.settings.queues[0].messageTtl, 'Message handler timed out!')
 								.then((reply) => {
-									this.logger.debug('postmaster-general processed callback for message.', {address: address, message: body});
+									this.logger.debug('postmaster-general processed callback for message.', { address, message: body });
 
 									// If we have an error that should be returned to the caller, log it and convert the error to a string.
 									if (reply && reply.err) {
-										this.logger.error('postmaster-general callback returned an error!', {address: address, message: body}, reply.err);
+										this.logger.error('postmaster-general callback returned an error!', { address, message: body }, reply.err);
 										reply.err = reply.err.message || reply.err.name;
 
 										// Sometimes we may want to log the error, but not send the full message to the caller (as in the case of db credentials).
@@ -316,13 +316,13 @@ class PostmasterGeneral extends EventEmitter {
 											message.properties.messageId = correlationId;
 										}
 
-										message.reply(reply, {headers: {requestId: requestId, trace: trace}});
+										message.reply(reply, { headers: { requestId, trace } });
 									} else {
 										message.ack();
 									}
 								})
 								.catch((err) => {
-									this.logger.error('postmaster-general encountered error processing callback!', {address: address, message: body}, err);
+									this.logger.error('postmaster-general encountered error processing callback!', { address, message: body }, err);
 									message.reject();
 								})
 								.then(() => {
@@ -346,7 +346,7 @@ class PostmasterGeneral extends EventEmitter {
 									}
 								});
 						} catch (err) {
-							this.logger.error('postmaster-general encountered error processing callback!', {address: address, message: message.body}, err);
+							this.logger.error('postmaster-general encountered error processing callback!', { address, message: message.body }, err);
 							message.reject();
 
 							// Calculate the elapsed time.
@@ -378,14 +378,14 @@ class PostmasterGeneral extends EventEmitter {
 							resolve();
 						})
 						.catch((err) => {
-							this.logger.error('postmaster-general encountered error while registering a listener!', {address: address}, err);
+							this.logger.error('postmaster-general encountered error while registering a listener!', { address }, err);
 							reject(err);
 						});
 				} else {
 					resolve();
 				}
 			} catch (err) {
-				this.logger.error('postmaster-general encountered error while registering a listener!', {address: address}, err);
+				this.logger.error('postmaster-general encountered error while registering a listener!', { address }, err);
 				reject(err);
 			}
 		});
@@ -410,17 +410,17 @@ class PostmasterGeneral extends EventEmitter {
 						.then(() => {
 							delete this.listeners[topic];
 
-							this.logger.info('postmaster-general removed listener callback.', {address: address});
+							this.logger.info('postmaster-general removed listener callback.', { address });
 							resolve();
 						})
 						.catch((err) => {
-							this.logger.error('postmaster-general encountered error while removing a listener!', {address: address}, err);
+							this.logger.error('postmaster-general encountered error while removing a listener!', { address }, err);
 							reject(err);
 						});
 				}
 				resolve();
 			} catch (err) {
-				this.logger.error('postmaster-general encountered error while removing a listener!', {address: address}, err);
+				this.logger.error('postmaster-general encountered error while removing a listener!', { address }, err);
 				reject(err);
 			}
 		});
