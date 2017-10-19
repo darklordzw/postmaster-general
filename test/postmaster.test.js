@@ -72,8 +72,8 @@ describe('publisher functions:', () => {
 				})
 				.catch(() => {
 					try {
-						expect(spyResolveTopic.calledOnce).to.be.ok;
-						expect(spyPublish.called).to.be.ok;
+						expect(spyResolveTopic.calledOnce).to.be.ok; // eslint-disable-line no-unused-expressions
+						expect(spyPublish.called).to.be.ok; // eslint-disable-line no-unused-expressions
 						done();
 					} catch (err) {
 						done(err);
@@ -92,8 +92,8 @@ describe('publisher functions:', () => {
 			postmaster.publish('role:create', { max: 100, min: 25 })
 				.then(() => {
 					try {
-						expect(spyResolveTopic.calledOnce).to.be.ok;
-						expect(spyPublish.called).to.be.ok;
+						expect(spyResolveTopic.calledOnce).to.be.ok; // eslint-disable-line no-unused-expressions
+						expect(spyPublish.called).to.be.ok; // eslint-disable-line no-unused-expressions
 						done();
 					} catch (err) {
 						done(err);
