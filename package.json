@@ -27,6 +27,7 @@
     "coverage": "nyc report --reporter=text-lcov | coveralls"
   },
   "dependencies": {
+    "amqplib": "^0.5.1",
     "bluebird": "^3.5.0",
     "darklordzw-rabbot": "^1.1.1",
     "log4js": "^2.3.4",
