@@ -1,5 +1,5 @@
 ﻿# postmaster-general
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/darklordzw/postmaster-general/blob/master/LICENSE.md)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/darklordzw/postmaster-general/blob/master/LICENSE.md) [![npm](https://img.shields.io/npm/v/npm.svg)](https://www.npmjs.com/package/postmaster-general) [![npm](https://img.shields.io/npm/dm/localeval.svg)](https://www.npmjs.com/package/postmaster-general) [![Build Status](https://travis-ci.org/darklordzw/postmaster-general.svg?branch=master)](https://travis-ci.org/darklordzw/postmaster-general) [![Coverage Status](https://coveralls.io/repos/github/darklordzw/postmaster-general/badge.svg?branch=master)](https://coveralls.io/github/darklordzw/postmaster-general?branch=master)
 
 Dead-simple, ready-to-use, promise-based Node.js library, for microservice communication over [AMQP][1] using [rabbot][3].
 
