@@ -23,8 +23,8 @@
     "defaults.json"
   ],
   "scripts": {
-    "test": "gulp run-tests",
-    "validate": "gulp validate"
+    "test": "nyc --reporter=html --reporter=text mocha",
+    "coverage": "nyc report --reporter=text-lcov | coveralls"
   },
   "dependencies": {
     "bluebird": "^3.5.0",
@@ -34,9 +34,12 @@
   },
   "devDependencies": {
     "chai": "^4.1.2",
+    "coveralls": "^3.0.0",
     "dirty-chai": "^2.0.1",
     "gulp": "^3.9.1",
     "gulp-test-rigging": "^0.1.3",
+    "mocha": "^4.0.1",
+    "nyc": "^11.2.1",
     "sinon": "^4.0.0"
   },
   "directories": {
