@@ -36,6 +36,9 @@ class PostmasterGeneral extends EventEmitter {
 		this._url = typeof options.url === 'undefined' ? 'localhost:5672' : options.url;
 		this._defaultPublishExchange = options.exchanges[0];
 		this._outstandingMessages = new Set();
+		this._createChannel = null;
+		this._topography = {};
+		this._replyConsumerTag = null;
 	}
 
 	get outstandingMessages() {
@@ -84,7 +87,7 @@ class PostmasterGeneral extends EventEmitter {
 					}
 				});
 
-				this.createChannel = async () => {
+				this._createChannel = async () => {
 					const channel = await this._connection.createChannel();
 					channel.on('error', async (err) => {
 						if (!this._connecting) {
@@ -105,8 +108,9 @@ class PostmasterGeneral extends EventEmitter {
 					publish: this._connection.createConfirmChannel(),
 					replyPublish: this._connection.createConfirmChannel(),
 					topography: this._connection.createChannel(),
-					consumers: Promise.reduce(this.topography.queues, async (consumerMap, queue) => {
-						consumerMap[queue.name] = await this.createChannel();
+					consumers: Promise.reduce(this._topography.queues.keys(), async (consumerMap, key) => {
+						const queue = this._topography.queues[key];
+						consumerMap[queue.name] = await this._createChannel();
 					})
 				});
 
@@ -135,7 +139,7 @@ class PostmasterGeneral extends EventEmitter {
 	 */
 	async assertExchange(name, type, options) {
 		await this._channels.topography.assertExchange(name, type, options);
-		this.topography.exchanges[name] = { name, type, options };
+		this._topography.exchanges[name] = { name, type, options };
 	}
 
 	/**
@@ -146,7 +150,7 @@ class PostmasterGeneral extends EventEmitter {
 	 */
 	async assertQueue(name, options) {
 		await this._channels.topography.assertQueue(name, options);
-		this.topography.queues[name] = { name, options };
+		this._topography.queues[name] = { name, options };
 	}
 
 	/**
@@ -159,7 +163,7 @@ class PostmasterGeneral extends EventEmitter {
 	 */
 	async assertBinding(queue, exchange, topic, options) {
 		await this._channels.topography.bindQueue(queue, exchange, topic, options);
-		this.topography.bindings[`${queue}_${exchange}`] = { queue, exchange, topic, options };
+		this._topography.bindings[`${queue}_${exchange}`] = { queue, exchange, topic, options };
 	}
 
 	/**
@@ -170,14 +174,14 @@ class PostmasterGeneral extends EventEmitter {
 		const topographyPromises = [];
 
 		// Assert exchanges.
-		for (const key of this.topography.exchanges.keys()) {
-			const exchange = this.topography.exchanges[key];
+		for (const key of this._topography.exchanges.keys()) {
+			const exchange = this._topography.exchanges[key];
 			topographyPromises.push(this._channels.topography.assertExchange(exchange.name, exchange.type, exchange.options));
 		}
 
 		// Assert consumer queues.
-		for (const key of this.topography.queues.keys()) {
-			const queue = this.topography.queues[key];
+		for (const key of this._topography.queues.keys()) {
+			const queue = this._topography.queues[key];
 			topographyPromises.push(this._channels.topography.assertQueue(queue.name, queue.options));
 		}
 
@@ -185,8 +189,8 @@ class PostmasterGeneral extends EventEmitter {
 		await Promise.all(topographyPromises);
 
 		// Bind listeners.
-		await Promise.map(this.topography.bindings.keys(), (key) => {
-			const binding = this.topography.bindings[key];
+		await Promise.map(this._topography.bindings.keys(), (key) => {
+			const binding = this._topography.bindings[key];
 			return this._channels.topography.bindQueue(binding.queue, binding.exchange, binding.topic, binding.options);
 		});
 	}
@@ -199,13 +203,13 @@ class PostmasterGeneral extends EventEmitter {
 		this._shouldConsume = true;
 
 		// Since the reply queue isn't bound to an exchange, we need to handle it separately.
-		if (this.topography.queues.reply) {
-			const replyQueue = this.topography.queues.reply;
+		if (this._topography.queues.reply) {
+			const replyQueue = this._topography.queues.reply;
 			this._replyConsumerTag = await this._channels.consumers[replyQueue.name].consume(replyQueue.name, this._handleReply, replyQueue.options);
 		}
 
-		await Promise.map(this.topography.bindings.keys(), async (key) => {
-			const binding = this.topography.bindings[key];
+		await Promise.map(this._topography.bindings.keys(), async (key) => {
+			const binding = this._topography.bindings[key];
 			const consumerTag = await this._channels.consumers[binding.queue].consume(binding.queue, this._handlers[binding.topic].callback, binding.options);
 			this._handlers[binding.topic].consumerTag = consumerTag;
 		});
@@ -220,12 +224,12 @@ class PostmasterGeneral extends EventEmitter {
 		this._shouldConsume = false;
 
 		if (this._replyConsumerTag && cancelReplies) {
-			await this._channels.consumers[this.topography.queues.reply.name].cancel(this._replyConsumerTag);
+			await this._channels.consumers[this._topography.queues.reply.name].cancel(this._replyConsumerTag);
 			this._replyConsumerTag = null;
 		}
 
-		await Promise.map(this.topography.bindings.keys(), (key) => {
-			const binding = this.topography.bindings[key];
+		await Promise.map(this._topography.bindings.keys(), (key) => {
+			const binding = this._topography.bindings[key];
 			const consumerTag = this._handlers[binding.topic].consumerTag;
 			delete this._handlers[binding.topic].consumerTag;
 			return this._channels.consumers[binding.queue].cancel(consumerTag);
@@ -337,7 +341,7 @@ class PostmasterGeneral extends EventEmitter {
 		msg.properties = msg.properties || {};
 		msg.properties.headers = msg.properties.headers || {};
 
-		if (!msg.properties.correlationId || !this._replyHandlers[msg.properties.correlationId] || msg.properties.replyTo !== this.topography.queues.reply.name) {
+		if (!msg.properties.correlationId || !this._replyHandlers[msg.properties.correlationId] || msg.properties.replyTo !== this._topography.queues.reply.name) {
 			this._logger.warn(`postmaster-general reply handler received an invalid reply! correlationId: ${msg.properties.correlationId}`);
 		} else if (body.err) {
 			this._replyHandlers[msg.properties.correlationId](new Error(body.err));
@@ -350,7 +354,7 @@ class PostmasterGeneral extends EventEmitter {
 		const topic = this._resolveTopic(pattern);
 		const queueName = options.queue.prefix + '.' + topic;
 		if (!this._channels.consumers[queueName]) {
-			this._channels.consumers[queueName] = await this.createChannel();
+			this._channels.consumers[queueName] = await this._createChannel();
 		}
 		await this.assertExchange(options.exchange.name, options.exchange.type, options.exchange);
 		await this.assertQueue(queueName, options.queue);
@@ -453,7 +457,7 @@ class PostmasterGeneral extends EventEmitter {
 		options.contentEncoding = 'utf8';
 		options.messageId = options.messageId || uuidv4();
 		options.correlationId = options.correlationId || options.messageId;
-		options.replyTo = this.topography.queues.reply.name;
+		options.replyTo = this._topography.queues.reply.name;
 		options.timestamp = new Date().getTime();
 
 		const exchange = options.exchange || this._defaultPublishExchange;
