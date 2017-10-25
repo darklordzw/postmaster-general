@@ -230,7 +230,7 @@ class PostmasterGeneral extends EventEmitter {
 
 		await Promise.map(this._topography.bindings.keys(), (key) => {
 			const binding = this._topography.bindings[key];
-			const consumerTag = this._handlers[binding.topic].consumerTag;
+			const consumerTag = JSON.parse(JSON.stringify(this._handlers[binding.topic].consumerTag));
 			if (consumerTag) {
 				delete this._handlers[binding.topic].consumerTag;
 				return this._channels.consumers[binding.queue].cancel(consumerTag);
@@ -397,14 +397,15 @@ class PostmasterGeneral extends EventEmitter {
 	}
 
 	/**
-	 * Called to remove a listener
+	 * Called to remove a listener. Note that this call DOES NOT delete any queues
+	 * or exchanges. It is recommended that these constructs be made to auto-delete.
 	 * @param {String} pattern The pattern to match.
 	 * @returns {Promise} Promise that resolves when all consumers have stopped consuming.
 	 */
 	async removeListener(pattern, prefix, exchange) {
 		const topic = this._resolveTopic(pattern);
 		const queueName = prefix + '.' + topic;
-		const consumerTag = this._handlers[topic].consumerTag;
+		const consumerTag = JSON.parse(JSON.stringify(this._handlers[topic].consumerTag));
 		delete this._handlers[topic];
 		delete this._topography.bindings[`${queueName}_${exchange}`];
 		if (this._channels.consumers[queueName]) {
