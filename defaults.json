@@ -1,5 +1,4 @@
 {
-	"ackRetryDelay": 1000,
 	"connectRetryDelay": 1000,
 	"connectRetryLimit": 3,
 	"consumerPrefetch": 1,

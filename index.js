@@ -36,7 +36,6 @@ class PostmasterGeneral extends EventEmitter {
 
 		// Set options and defaults.
 		options = options || {};
-		this._ackRetryDelay = typeof options.ackRetryDelay === 'undefined' ? defaults.ackRetryDelay : options.ackRetryDelay;
 		this._connectRetryDelay = typeof options.connectRetryDelay === 'undefined' ? defaults.connectRetryDelay : options.connectRetryDelay;
 		this._connectRetryLimit = typeof options.connectRetryLimit === 'undefined' ? defaults.connectRetryLimit : options.connectRetryLimit;
 		this._consumerPrefetch = typeof options.consumerPrefetch === 'undefined' ? defaults.consumerPrefetch : options.consumerPrefetch;
@@ -270,26 +269,27 @@ class PostmasterGeneral extends EventEmitter {
 	 * @param {Object} [reply] The request body of the response message to send.
 	 * @returns {Promise} Promise that resolves when the message is acknowledged.
 	 */
-	_ackMessageAndReply(channel, msg, pattern, reply) {
-		const attempt = async () => {
-			if (this._connecting) {
-				await Promise.delay(this._ackRetryDelay);
-				return attempt();
-			}
-
-			try {
-				if (this._outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
-					await channel.ack(msg);
-					if (reply && msg.properties.replyTo && msg.properties.correlationId) {
-						await this._channels.replyPublish.sendToQueue(msg.properties.replyTo, Buffer.from(JSON.stringify(reply)));
-					}
+	async _ackMessageAndReply(channel, msg, pattern, reply) {
+		try {
+			if (this._outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
+				await channel.ack(msg);
+				if (msg.properties.replyTo && msg.properties.correlationId) {
+					reply = reply || {};
+					const options = {
+						contentType: 'application/json',
+						contentEncoding: 'utf8',
+						messageId: uuidv4(),
+						correlationId: msg.properties.correlationId,
+						timestamp: new Date().getTime()
+					};
+					await this._channels.replyPublish.sendToQueue(msg.properties.replyTo, Buffer.from(JSON.stringify(reply)), options);
 				}
-			} catch (err) {
-				this._logger.warn(new Error(`postmaster-general failed to ack a message! message: ${pattern} err: ${err.message}`));
+			} else {
+				this._logger.warn(`postmaster-general skipping message ack due to connection failure! message: ${pattern} messageId: ${msg.properties.messageId}`);
 			}
-		};
-
-		return attempt();
+		} catch (err) {
+			this._logger.warn(new Error(`postmaster-general failed to ack a message! message: ${pattern} messageId: ${msg.properties.messageId} err: ${err.message}`));
+		}
 	}
 
 	/**
@@ -298,29 +298,30 @@ class PostmasterGeneral extends EventEmitter {
 	 * @param {Object} channel The channel the message was received on.
 	 * @param {Object} msg The RabbitMQ message to nack.
 	 * @param {String} pattern The routing key of the message.
-	 * @param {Object} [reply] The request body of the response message to send.
+	 * @param {String} [reply] The error message to end in reply.
 	 * @returns {Promise} Promise that resolves when the message is nacked.
 	 */
-	_nackMessageAndReply(channel, msg, pattern, reply) {
-		const attempt = async () => {
-			if (this._connecting) {
-				await Promise.delay(this._ackRetryDelay);
-				return attempt();
-			}
-
-			try {
-				if (this._outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
-					await channel.nack(msg, false, false);
-					if (reply && msg.properties.replyTo && msg.properties.correlationId) {
-						await this._channels.replyPublish.sendToQueue(msg.properties.replyTo, Buffer.from(JSON.stringify({ err: reply })));
-					}
+	async _nackMessageAndReply(channel, msg, pattern, reply) {
+		try {
+			if (this._outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
+				await channel.nack(msg, false, false);
+				if (msg.properties.replyTo && msg.properties.correlationId) {
+					reply = reply || 'An unknown error occurred during processing!';
+					const options = {
+						contentType: 'application/json',
+						contentEncoding: 'utf8',
+						messageId: uuidv4(),
+						correlationId: msg.properties.correlationId,
+						timestamp: new Date().getTime()
+					};
+					await this._channels.replyPublish.sendToQueue(msg.properties.replyTo, Buffer.from(JSON.stringify({ err: reply })), options);
 				}
-			} catch (err) {
-				this._logger.warn(new Error(`postmaster-general failed to nack a message! message: ${pattern} err: ${err.message}`));
+			} else {
+				this._logger.warn(`postmaster-general skipping message nack due to connection failure! message: ${pattern} messageId: ${msg.properties.messageId}`);
 			}
-		};
-
-		return attempt();
+		} catch (err) {
+			this._logger.warn(new Error(`postmaster-general failed to nack a message! message: ${pattern} messageId: ${msg.properties.messageId} err: ${err.message}`));
+		}
 	}
 
 	/**
@@ -331,23 +332,16 @@ class PostmasterGeneral extends EventEmitter {
 	 * @param {String} pattern The routing key of the message.
 	 * @returns {Promise} Promise that resolves when the message is rejected.
 	 */
-	_rejectMessage(channel, msg, pattern) {
-		const attempt = async () => {
-			if (this._connecting) {
-				await Promise.delay(this._ackRetryDelay);
-				return attempt();
+	async _rejectMessage(channel, msg, pattern) {
+		try {
+			if (this._outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
+				await channel.reject(msg);
+			} else {
+				this._logger.warn(`postmaster-general skipping message rejection due to connection failure! message: ${pattern} messageId: ${msg.properties.messageId}`);
 			}
-
-			try {
-				if (this._outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
-					await channel.reject(msg);
-				}
-			} catch (err) {
-				this._logger.warn(new Error(`postmaster-general failed to reject a message! message: ${pattern} err: ${err.message}`));
-			}
-		};
-
-		return attempt();
+		} catch (err) {
+			this._logger.warn(new Error(`postmaster-general failed to reject a message! message: ${pattern} messageId: ${msg.properties.messageId} err: ${err.message}`));
+		}
 	}
 
 	/**
