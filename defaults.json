@@ -17,6 +17,7 @@
 			"type": "topic"
 		}
 	},
+	"handlerTimingResetInterval": 30000,
 	"heartbeat": 30,	
 	"publishRetryDelay": 1000,
 	"publishRetryLimit": 3,

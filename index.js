@@ -27,6 +27,7 @@ class PostmasterGeneral extends EventEmitter {
 		this._connecting = false;
 		this._channels = {};
 		this._handlers = {};
+		this._handlerTimingsTimeout = null;
 		this._outstandingMessages = new Set();
 		this._replyConsumerTag = null;
 		this._replyHandlers = {};
@@ -41,6 +42,7 @@ class PostmasterGeneral extends EventEmitter {
 		this._consumerPrefetch = typeof options.consumerPrefetch === 'undefined' ? defaults.consumerPrefetch : options.consumerPrefetch;
 		this._deadLetterExchange = options.deadLetterExchange || defaults.deadLetterExchange;
 		this._defaultExchange = defaults.exchanges.topic;
+		this._handlerTimingResetInterval = options.handlerTimingResetInterval || defaults.handlerTimingResetInterval;
 		this._heartbeat = typeof options.heartbeat === 'undefined' ? defaults.heartbeat : options.heartbeat;
 		this._publishRetryDelay = typeof options.publishRetryDelay === 'undefined' ? defaults.publishRetryDelay : options.publishRetryDelay;
 		this._publishRetryLimit = typeof options.publishRetryLimit === 'undefined' ? defaults.publishRetryLimit : options.publishRetryLimit;
@@ -67,6 +69,20 @@ class PostmasterGeneral extends EventEmitter {
 	 */
 	get outstandingMessageCount() {
 		return this._outstandingMessages.size + this._replyHandlers.keys().length;
+	}
+
+	/**
+	 * Accessor property for getting the current handler timings.
+	 */
+	get handlerTimings() {
+		const handlerTimings = {};
+		for (const key of this._handlers.keys()) {
+			const handler = this._handlers[key];
+			if (handler.timings) {
+				handlerTimings[key] = handler.timings;
+			}
+		}
+		return handlerTimings;
 	}
 
 	/**
@@ -224,6 +240,8 @@ class PostmasterGeneral extends EventEmitter {
 	async startConsuming() {
 		this._shouldConsume = true;
 
+		this._resetHandlerTimings();
+
 		// Since the reply queue isn't bound to an exchange, we need to handle it separately.
 		if (this._topography.queues.reply) {
 			const replyQueue = this._topography.queues.reply;
@@ -244,6 +262,8 @@ class PostmasterGeneral extends EventEmitter {
 	 */
 	async stopConsuming(cancelReplies) {
 		this._shouldConsume = false;
+
+		this._resetHandlerTimings();
 
 		if (this._replyConsumerTag && cancelReplies) {
 			await this._channels.consumers[this._topography.queues.reply.name].cancel(this._replyConsumerTag);
@@ -377,6 +397,47 @@ class PostmasterGeneral extends EventEmitter {
 	}
 
 	/**
+	 * Updates the timing data for message handler callbacks.
+	 * @param {String} pattern The pattern to record timing data for.
+	 * @param {Date} start The time at which the handler started execution.
+	 */
+	_setHandlerTiming(pattern, start) {
+		const elapsed = new Date().getTime() - start;
+		this._handlers[pattern].timings = this._handlers[pattern].timings || {
+			messageCount: 0,
+			elapsedTime: 0,
+			minElapsedTime: 0,
+			maxElapsedTime: 0
+		};
+		this._handlers[pattern].timings.messageCount++;
+		this._handlers[pattern].timings.elapsedTime += elapsed;
+
+		if (this._handlers[pattern].timings.minElapsedTime > elapsed ||
+			this._handlers[pattern].timings.minElapsedTime === 0) {
+			this._handlers[pattern].timings.minElapsedTime = elapsed;
+		}
+		if (this._handlers[pattern].timings.maxElapsedTime < elapsed) {
+			this._handlers[pattern].timings.maxElapsedTime = elapsed;
+		}
+	}
+
+	/**
+	 * Resets the handler timings to prevent unbounded accumulation of stale data.
+	 */
+	_resetHandlerTimings() {
+		for (const key of this._handlers.keys()) {
+			delete this._handlers[key].timings;
+		}
+
+		// If we're not manually managing the timing refresh, schedule the next timeout.
+		if (this._handlerTimingResetInterval) {
+			this._handlerTimingsTimeout = setTimeout(() => {
+				this._resetHandlerTimings();
+			}, this._handlerTimingResetInterval);
+		}
+	}
+
+	/**
 	 * Adds a new listener for the specified pattern, asserting any associated topography.
 	 * @param {String} pattern The pattern to bind to.
 	 * @param {Function} callback The callback function to handle messages. This function MUST return a promise!
@@ -408,6 +469,8 @@ class PostmasterGeneral extends EventEmitter {
 		// Define the callback handler.
 		this._handlers[topic] = {};
 		this._handlers[topic].callback = async (msg) => {
+			const start = new Date().getTime();
+
 			try {
 				msg.properties = msg.properties || {};
 				msg.properties.headers = msg.properties.headers || {};
@@ -420,6 +483,7 @@ class PostmasterGeneral extends EventEmitter {
 
 				const reply = await callback(body);
 				await this._ackMessageAndReply(this._channels.consumers[queueName], msg, pattern, reply);
+				this._setHandlerTiming(pattern, start);
 			} catch (err) {
 				if (err.retry) {
 					let retryCount = msg.properties.retryCount || 0;
@@ -429,9 +493,11 @@ class PostmasterGeneral extends EventEmitter {
 						msg.properties.retryCount = retryCount++;
 						await this._rejectMessage(this._channels.consumers[queueName], msg);
 					}
+					this._setHandlerTiming(pattern, start);
 				} else {
 					this._logger.error(`postmaster-general message handler failed and cannot retry! message: ${pattern} err: `, err);
 					await this._nackMessageAndReply(this._channels.consumers[queueName], msg, pattern, err.message);
+					this._setHandlerTiming(pattern, start);
 				}
 			}
 		};
