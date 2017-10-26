@@ -4,23 +4,23 @@
 	"connectRetryLimit": 3,
 	"consumerPrefetch": 1,
 	"deadLetter": "postmaster.dlx",
-	"exchanges": [
-		{
+	"exchanges": {
+		"dlx": {
 			"name": "postmaster.dlx",
 			"type": "topic"
 		},
-		{
+		"logging": {
 			"name": "postmaster.logging",
 			"type": "topic"
 		},
-		{
+		"topic": {
 			"name": "postmaster.topic",
 			"type": "topic"
 		}
-	],
+	},
 	"heartbeat": 30,	
 	"publishRetryDelay": 1000,
 	"publishRetryLimit": 3,
-	"replyQueuePrefix": "postmaster.reply",
+	"queuePrefix": "postmaster",
 	"url": "amqp://guest:guest@localhost:5672"
 }

@@ -13,7 +13,6 @@ const log4js = require('log4js');
 const Promise = require('bluebird');
 const uuidv4 = require('uuid/v4');
 const defaults = require('./defaults');
-const errors = require('./errors');
 
 class PostmasterGeneral extends EventEmitter {
 	/**
@@ -42,12 +41,12 @@ class PostmasterGeneral extends EventEmitter {
 		this._connectRetryLimit = typeof options.connectRetryLimit === 'undefined' ? defaults.connectRetryLimit : options.connectRetryLimit;
 		this._consumerPrefetch = typeof options.consumerPrefetch === 'undefined' ? defaults.consumerPrefetch : options.consumerPrefetch;
 		this._deadLetter = typeof options.deadLetter === 'undefined' ? defaults.deadLetter : options.deadLetter;
-		this._defaultPublishExchange = defaults.exchanges[2]; // Default publish exchange is postmaster.topic.
+		this._defaultPublishExchange = defaults.exchanges.topic;
 		this._heartbeat = typeof options.heartbeat === 'undefined' ? defaults.heartbeat : options.heartbeat;
 		this._publishRetryDelay = typeof options.publishRetryDelay === 'undefined' ? defaults.publishRetryDelay : options.publishRetryDelay;
 		this._publishRetryLimit = typeof options.publishRetryLimit === 'undefined' ? defaults.publishRetryLimit : options.publishRetryLimit;
 		this._replyTimeout = this._publishRetryDelay * this._publishRetryLimit * 2;
-		this._replyQueuePrefix = typeof options.replyQueuePrefix === 'undefined' ? defaults.replyQueuePrefix : options.replyQueuePrefix;
+		this._queuePrefix = typeof options.queuePrefix === 'undefined' ? defaults.queuePrefix : options.queuePrefix;
 		this._url = typeof options.url === 'undefined' ? defaults.url : options.url;
 
 		// Configure the logger.
@@ -56,14 +55,19 @@ class PostmasterGeneral extends EventEmitter {
 			this._logger = log4js.getLogger();
 			this._logger.level = process.env.DEBUG ? 'debug' : 'info';
 		}
+
+		// Configure reply queue topology.
+		// Reply queue belongs only to this instance, but we want it to survive reconnects. Thus, we set an expiration for the queue.
+		const replyQueueName = `postmaster.reply.${this._queuePrefix}.${uuidv4()}`;
+		const replyQueueExpiration = (this._connectRetryDelay * this._connectRetryLimit) + (60000 * this._connectRetryLimit);
+		this._topography.queues = { reply: { name: replyQueueName, noAck: true, expires: replyQueueExpiration } };
 	}
 
-	get outstandingMessages() {
-		return this._outstandingMessages.size;
-	}
-
-	static get errors() {
-		return errors;
+	/**
+	 * Accessor property for retrieving the number of messages being handled, subscribed and replies.
+	 */
+	get outstandingMessageCount() {
+		return this._outstandingMessages.size + this._replyHandlers.keys().length;
 	}
 
 	/**
@@ -85,16 +89,21 @@ class PostmasterGeneral extends EventEmitter {
 			connectionAttempts++;
 			this._connecting = true;
 
+			// We always want to start on a clean-slate when we connect.
+			// Cancel outstanding messages, clear all consumers, and reset the connection.
 			try {
+				this._outstandingMessages.clear();
+				this._replyConsumerTag = null;
+				for (const key of this._handlers.keys()) {
+					delete this._handlers[key].consumerTag;
+				}
 				await this._connection.close();
 			} catch (err) {}
 
-			try {
-				this._connection = await amqp.connect(this._url);
-				this._connection.on('error', async (err) => {
+			const reconnect = async (err) => {
+				try {
 					if (!this._connecting) {
-						this._logger.warn('postmaster-general lost AMQP connection and will try to reconnect! Error: ', err);
-						this._outstandingMessages.clear();
+						this._logger.warn(`postmaster-general lost AMQP connection and will try to reconnect! Error: ${err.message}`);
 						await attemptConnect();
 						await this._assertTopography();
 						if (this._shouldConsume) {
@@ -102,29 +111,25 @@ class PostmasterGeneral extends EventEmitter {
 						}
 						this._logger.warn('postmaster-general restored AMQP connection successfully!');
 					}
-				});
+				} catch (err) {
+					this.emit('error', new Error(`postmaster-general was unable to re-establish AMQP connection! Error: ${err.message}`));
+				}
+			};
+
+			try {
+				this._connection = await amqp.connect(this._url, { heartbeat: this._heartbeat });
+				this._connection.on('error', reconnect);
 
 				this._createChannel = async () => {
 					const channel = await this._connection.createChannel();
-					channel.on('error', async (err) => {
-						if (!this._connecting) {
-							this._logger.warn('postmaster-general encountered an AMQP channel error and will try to reconnect! Error: ', err);
-							this._outstandingMessages.clear();
-							await attemptConnect();
-							await this._assertTopography();
-							if (this._shouldConsume) {
-								await this.startConsuming();
-							}
-							this._logger.warn('postmaster-general restored AMQP connection successfully!');
-						}
-					});
+					channel.on('error', reconnect);
 					return channel;
 				};
 
 				this._channels = await Promise.props({
-					publish: this._connection.createConfirmChannel(),
-					replyPublish: this._connection.createConfirmChannel(),
-					topography: this._connection.createChannel(),
+					publish: this._createChannel(),
+					replyPublish: this._createChannel(),
+					topography: this._createChannel(),
 					consumers: Promise.reduce(this._topography.queues.keys(), async (consumerMap, key) => {
 						const queue = this._topography.queues[key];
 						consumerMap[queue.name] = await this._createChannel();
@@ -136,6 +141,7 @@ class PostmasterGeneral extends EventEmitter {
 			} catch (err) {
 				if (connectionAttempts < this._connectRetryLimit) {
 					this._logger.warn('postmaster-general failed to establish AMQP connection! Retrying...');
+					await Promise.delay(this._connectRetryDelay);
 					return attemptConnect();
 				}
 				this._logger.error(`postmaster-general failed to establish AMQP connection after ${connectionAttempts} attempts!`, err);
@@ -279,7 +285,7 @@ class PostmasterGeneral extends EventEmitter {
 					}
 				}
 			} catch (err) {
-				this._logger.warn(new errors.MessageACKError(`postmaster-general failed to ack a message! message: ${pattern} err: ${err.message}`));
+				this._logger.warn(new Error(`postmaster-general failed to ack a message! message: ${pattern} err: ${err.message}`));
 			}
 		};
 
@@ -310,7 +316,7 @@ class PostmasterGeneral extends EventEmitter {
 					}
 				}
 			} catch (err) {
-				this._logger.warn(new errors.MessageNACKError(`postmaster-general failed to nack a message! message: ${pattern} err: ${err.message}`));
+				this._logger.warn(new Error(`postmaster-general failed to nack a message! message: ${pattern} err: ${err.message}`));
 			}
 		};
 
@@ -337,7 +343,7 @@ class PostmasterGeneral extends EventEmitter {
 					await channel.reject(msg);
 				}
 			} catch (err) {
-				this._logger.warn(new errors.MessageNACKError(`postmaster-general failed to reject a message! message: ${pattern} err: ${err.message}`));
+				this._logger.warn(new Error(`postmaster-general failed to reject a message! message: ${pattern} err: ${err.message}`));
 			}
 		};
 
@@ -363,16 +369,19 @@ class PostmasterGeneral extends EventEmitter {
 
 		if (!msg.properties.correlationId || !this._replyHandlers[msg.properties.correlationId] || msg.properties.replyTo !== this._topography.queues.reply.name) {
 			this._logger.warn(`postmaster-general reply handler received an invalid reply! correlationId: ${msg.properties.correlationId}`);
-		} else if (body.err) {
-			this._replyHandlers[msg.properties.correlationId](new Error(body.err));
 		} else {
-			this._replyHandlers[msg.properties.correlationId](null, body);
+			if (body.err) {
+				this._replyHandlers[msg.properties.correlationId](new Error(body.err));
+			} else {
+				this._replyHandlers[msg.properties.correlationId](null, body);
+			}
+			delete this._replyHandlers[msg.properties.correlationId];
 		}
 	}
 
 	async addListener(pattern, callback, options) {
 		const topic = this._resolveTopic(pattern);
-		const queueName = options.queue.prefix + '.' + topic;
+		const queueName = (options.queue.prefix || this._queuePrefix) + '.' + topic;
 		if (!this._channels.consumers[queueName]) {
 			this._channels.consumers[queueName] = await this._createChannel();
 		}
@@ -399,7 +408,7 @@ class PostmasterGeneral extends EventEmitter {
 				const reply = await callback(body, { requestId, trace });
 				await this._ackMessageAndReply(this._channels.consumers[queueName], msg, pattern, reply);
 			} catch (err) {
-				if (err instanceof errors.RetryableMessageHandlerError) {
+				if (err.retry) {
 					let retryCount = msg.properties.retryCount || 0;
 					const retryLimit = msg.properties.retryLimit || 0;
 					if (retryCount < retryLimit) {
@@ -423,7 +432,7 @@ class PostmasterGeneral extends EventEmitter {
 	 */
 	async removeListener(pattern, prefix, exchange) {
 		const topic = this._resolveTopic(pattern);
-		const queueName = prefix + '.' + topic;
+		const queueName = (prefix || this._queuePrefix) + '.' + topic;
 		const consumerTag = JSON.parse(JSON.stringify(this._handlers[topic].consumerTag));
 		delete this._handlers[topic];
 		delete this._topography.bindings[`${queueName}_${exchange}`];
