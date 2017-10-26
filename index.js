@@ -9,8 +9,10 @@
 
 const EventEmitter = require('events');
 const amqp = require('amqplib');
+const log4js = require('log4js');
 const Promise = require('bluebird');
 const uuidv4 = require('uuid/v4');
+const defaults = require('./defaults');
 const errors = require('./errors');
 
 class PostmasterGeneral extends EventEmitter {
@@ -20,25 +22,40 @@ class PostmasterGeneral extends EventEmitter {
 	 */
 	constructor(options) {
 		super();
-		options = options || {};
-		this._connecting = false;
-		this._shouldConsume = false;
+
+		// Set initial state values.
 		this._connection = null;
-		this._channels = null;
+		this._connecting = false;
+		this._channels = {};
 		this._handlers = {};
-		this._replyHandlers = {};
-		this._logger = null;
-		this._connectRetryLimit = typeof options.connectRetryLimit === 'undefined' ? 3 : options.connectRetryLimit;
-		this._publishRetryDelay = typeof options.publishRetryDelay === 'undefined' ? 1000 : options.publishRetryDelay;
-		this._publishRetryLimit = typeof options.publishRetryLimit === 'undefined' ? 3 : options.publishRetryLimit;
-		this._replyTimeout = typeof options.replyTimeout === 'undefined' ? 3000 : options.replyTimeout;
-		this._ackRetryDelay = typeof options.ackRetryDelay === 'undefined' ? 1000 : options.ackRetryDelay;
-		this._url = typeof options.url === 'undefined' ? 'localhost:5672' : options.url;
-		this._defaultPublishExchange = options.exchanges[0];
 		this._outstandingMessages = new Set();
-		this._createChannel = null;
-		this._topography = {};
 		this._replyConsumerTag = null;
+		this._replyHandlers = {};
+		this._shouldConsume = false;
+		this._topography = { exchanges: defaults.exchanges };
+		this._createChannel = null;
+
+		// Set options and defaults.
+		options = options || {};
+		this._ackRetryDelay = typeof options.ackRetryDelay === 'undefined' ? defaults.ackRetryDelay : options.ackRetryDelay;
+		this._connectRetryDelay = typeof options.connectRetryDelay === 'undefined' ? defaults.connectRetryDelay : options.connectRetryDelay;
+		this._connectRetryLimit = typeof options.connectRetryLimit === 'undefined' ? defaults.connectRetryLimit : options.connectRetryLimit;
+		this._consumerPrefetch = typeof options.consumerPrefetch === 'undefined' ? defaults.consumerPrefetch : options.consumerPrefetch;
+		this._deadLetter = typeof options.deadLetter === 'undefined' ? defaults.deadLetter : options.deadLetter;
+		this._defaultPublishExchange = defaults.exchanges[2]; // Default publish exchange is postmaster.topic.
+		this._heartbeat = typeof options.heartbeat === 'undefined' ? defaults.heartbeat : options.heartbeat;
+		this._publishRetryDelay = typeof options.publishRetryDelay === 'undefined' ? defaults.publishRetryDelay : options.publishRetryDelay;
+		this._publishRetryLimit = typeof options.publishRetryLimit === 'undefined' ? defaults.publishRetryLimit : options.publishRetryLimit;
+		this._replyTimeout = this._publishRetryDelay * this._publishRetryLimit * 2;
+		this._replyQueuePrefix = typeof options.replyQueuePrefix === 'undefined' ? defaults.replyQueuePrefix : options.replyQueuePrefix;
+		this._url = typeof options.url === 'undefined' ? defaults.url : options.url;
+
+		// Configure the logger.
+		this._logger = options.logger;
+		if (!this._logger) {
+			this._logger = log4js.getLogger();
+			this._logger.level = process.env.DEBUG ? 'debug' : 'info';
+		}
 	}
 
 	get outstandingMessages() {
@@ -359,6 +376,8 @@ class PostmasterGeneral extends EventEmitter {
 		if (!this._channels.consumers[queueName]) {
 			this._channels.consumers[queueName] = await this._createChannel();
 		}
+		options.queue.deadLetterRoutingKey = pattern;
+
 		await this.assertExchange(options.exchange.name, options.exchange.type, options.exchange);
 		await this.assertQueue(queueName, options.queue);
 		await this.assertBinding(queueName, options.exchange.name, topic, options.binding);

@@ -1,24 +1,26 @@
 {
-	"connection": {
-		"uri": "amqp://guest:guest@localhost:5672",
-		"publishTimeout": 30000
-	},
+	"ackRetryDelay": 1000,
+	"connectRetryDelay": 1000,
+	"connectRetryLimit": 3,
+	"consumerPrefetch": 1,
+	"deadLetter": "postmaster.dlx",
 	"exchanges": [
-		{
-			"name": "postmaster.topic",
-			"type": "topic"
-		},
 		{
 			"name": "postmaster.dlx",
 			"type": "topic"
+		},
+		{
+			"name": "postmaster.logging",
+			"type": "topic"
+		},
+		{
+			"name": "postmaster.topic",
+			"type": "topic"
 		}
 	],
-	"queues": [
-		{
-			"name": "postmaster.sub",
-			"subscribe": true,
-			"messageTtl": 60000,
-			"deadLetter": "postmaster.dlx"
-		}
-	]
+	"heartbeat": 30,	
+	"publishRetryDelay": 1000,
+	"publishRetryLimit": 3,
+	"replyQueuePrefix": "postmaster.reply",
+	"url": "amqp://guest:guest@localhost:5672"
 }
