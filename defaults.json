@@ -2,7 +2,7 @@
 	"connectRetryDelay": 1000,
 	"connectRetryLimit": 3,
 	"consumerPrefetch": 1,
-	"deadLetter": "postmaster.dlx",
+	"deadLetterExchange": "postmaster.dlx",
 	"exchanges": {
 		"dlx": {
 			"name": "postmaster.dlx",
@@ -20,6 +20,6 @@
 	"heartbeat": 30,	
 	"publishRetryDelay": 1000,
 	"publishRetryLimit": 3,
-	"queuePrefix": "postmaster",
+	"queuePrefix": "postmaster.queue",
 	"url": "amqp://guest:guest@localhost:5672"
 }

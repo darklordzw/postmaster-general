@@ -39,14 +39,14 @@ class PostmasterGeneral extends EventEmitter {
 		this._connectRetryDelay = typeof options.connectRetryDelay === 'undefined' ? defaults.connectRetryDelay : options.connectRetryDelay;
 		this._connectRetryLimit = typeof options.connectRetryLimit === 'undefined' ? defaults.connectRetryLimit : options.connectRetryLimit;
 		this._consumerPrefetch = typeof options.consumerPrefetch === 'undefined' ? defaults.consumerPrefetch : options.consumerPrefetch;
-		this._deadLetter = typeof options.deadLetter === 'undefined' ? defaults.deadLetter : options.deadLetter;
-		this._defaultPublishExchange = defaults.exchanges.topic;
+		this._deadLetterExchange = options.deadLetterExchange || defaults.deadLetterExchange;
+		this._defaultExchange = defaults.exchanges.topic;
 		this._heartbeat = typeof options.heartbeat === 'undefined' ? defaults.heartbeat : options.heartbeat;
 		this._publishRetryDelay = typeof options.publishRetryDelay === 'undefined' ? defaults.publishRetryDelay : options.publishRetryDelay;
 		this._publishRetryLimit = typeof options.publishRetryLimit === 'undefined' ? defaults.publishRetryLimit : options.publishRetryLimit;
 		this._replyTimeout = this._publishRetryDelay * this._publishRetryLimit * 2;
-		this._queuePrefix = typeof options.queuePrefix === 'undefined' ? defaults.queuePrefix : options.queuePrefix;
-		this._url = typeof options.url === 'undefined' ? defaults.url : options.url;
+		this._queuePrefix = options.queuePrefix || defaults.queuePrefix;
+		this._url = typeof options.url || defaults.url;
 
 		// Configure the logger.
 		this._logger = options.logger;
@@ -284,6 +284,7 @@ class PostmasterGeneral extends EventEmitter {
 					};
 					await this._channels.replyPublish.sendToQueue(msg.properties.replyTo, Buffer.from(JSON.stringify(reply)), options);
 				}
+				this._outstandingMessages.delete(`${pattern}_${msg.properties.messageId}`);
 			} else {
 				this._logger.warn(`postmaster-general skipping message ack due to connection failure! message: ${pattern} messageId: ${msg.properties.messageId}`);
 			}
@@ -316,6 +317,7 @@ class PostmasterGeneral extends EventEmitter {
 					};
 					await this._channels.replyPublish.sendToQueue(msg.properties.replyTo, Buffer.from(JSON.stringify({ err: reply })), options);
 				}
+				this._outstandingMessages.delete(`${pattern}_${msg.properties.messageId}`);
 			} else {
 				this._logger.warn(`postmaster-general skipping message nack due to connection failure! message: ${pattern} messageId: ${msg.properties.messageId}`);
 			}
@@ -336,6 +338,7 @@ class PostmasterGeneral extends EventEmitter {
 		try {
 			if (this._outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
 				await channel.reject(msg);
+				this._outstandingMessages.delete(`${pattern}_${msg.properties.messageId}`);
 			} else {
 				this._logger.warn(`postmaster-general skipping message rejection due to connection failure! message: ${pattern} messageId: ${msg.properties.messageId}`);
 			}
@@ -373,18 +376,36 @@ class PostmasterGeneral extends EventEmitter {
 		}
 	}
 
+	/**
+	 * Adds a new listener for the specified pattern, asserting any associated topography.
+	 * @param {String} pattern The pattern to bind to.
+	 * @param {Function} callback The callback function to handle messages. This function MUST return a promise!
+	 * @param {Object} [options] Additional options for queues, exchanges, and binding.
+	 * @returns {Promise} A promise that resolves when the listener has been added.
+	 */
 	async addListener(pattern, callback, options) {
+		options = options || {};
+
+		// Configure queue options.
+		options.queue = options.queue || {};
+		options.queue.deadLetterExchange = options.deadLetterExchange || this._deadLetterExchange;
+		options.queue.deadLetterRoutingKey = pattern;
+
 		const topic = this._resolveTopic(pattern);
 		const queueName = (options.queue.prefix || this._queuePrefix) + '.' + topic;
+
+		// Configure exchange options
+		options.exchange = options.exchange || this._defaultExchange;
+
+		// Grab a channel and assert the topography.
 		if (!this._channels.consumers[queueName]) {
 			this._channels.consumers[queueName] = await this._createChannel();
 		}
-		options.queue.deadLetterRoutingKey = pattern;
-
 		await this.assertExchange(options.exchange.name, options.exchange.type, options.exchange);
 		await this.assertQueue(queueName, options.queue);
 		await this.assertBinding(queueName, options.exchange.name, topic, options.binding);
 
+		// Define the callback handler.
 		this._handlers[topic] = {};
 		this._handlers[topic].callback = async (msg) => {
 			try {
@@ -397,9 +418,7 @@ class PostmasterGeneral extends EventEmitter {
 				let body = (msg.content || '{}').toString();
 				body = JSON.parse(body);
 
-				const requestId = msg.properties.headers.requestId;
-				const trace = msg.properties.headers.trace;
-				const reply = await callback(body, { requestId, trace });
+				const reply = await callback(body);
 				await this._ackMessageAndReply(this._channels.consumers[queueName], msg, pattern, reply);
 			} catch (err) {
 				if (err.retry) {
@@ -420,9 +439,11 @@ class PostmasterGeneral extends EventEmitter {
 
 	/**
 	 * Called to remove a listener. Note that this call DOES NOT delete any queues
-	 * or exchanges. It is recommended that these constructs be made to auto-delete.
+	 * or exchanges. It is recommended that these constructs be made to auto-delete or expire.
 	 * @param {String} pattern The pattern to match.
-	 * @returns {Promise} Promise that resolves when all consumers have stopped consuming.
+	 * @param {String} prefix The queue prefix to match.
+	 * @param {String} exchange The name of the exchange to remove the binding.
+	 * @returns {Promise} Promise that resolves the listener has been removed.
 	 */
 	async removeListener(pattern, prefix, exchange) {
 		const topic = this._resolveTopic(pattern);
@@ -456,7 +477,7 @@ class PostmasterGeneral extends EventEmitter {
 		options.messageId = options.messageId || uuidv4();
 		options.timestamp = new Date().getTime();
 
-		const exchange = options.exchange || this._defaultPublishExchange;
+		const exchange = options.exchange || this._defaultExchange.name;
 		const msgData = Buffer.from(JSON.stringify(message || '{}'));
 
 		const attempt = async () => {
@@ -506,7 +527,7 @@ class PostmasterGeneral extends EventEmitter {
 		options.replyTo = this._topography.queues.reply.name;
 		options.timestamp = new Date().getTime();
 
-		const exchange = options.exchange || this._defaultPublishExchange;
+		const exchange = options.exchange || this._defaultExchange.name;
 		const msgData = Buffer.from(JSON.stringify(message || '{}'));
 
 		const attempt = async () => {
