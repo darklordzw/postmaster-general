@@ -1,6 +1,6 @@
 {
   "name": "postmaster-general",
-  "version": "2.0.26",
+  "version": "3.0.0",
   "description": "A simple library for making microservice message bus calls using Node.js over RabbitMQ.",
   "author": "Ben Whatley",
   "repository": {
@@ -17,9 +17,9 @@
     "url": "https://github.com/darklordzw/postmaster-general/issues"
   },
   "homepage": "https://github.com/darklordzw/postmaster-general#readme",
-  "main": "postmaster-general.js",
+  "main": "index.js",
   "files": [
-    "postmaster-general.js",
+    "index.js",
     "defaults.json"
   ],
   "scripts": {
@@ -29,8 +29,7 @@
   "dependencies": {
     "amqplib": "^0.5.1",
     "bluebird": "^3.5.0",
-    "darklordzw-rabbot": "^1.1.1",
-    "log4js": "^2.3.4",
+    "log4js": "^2.3.10",
     "uuid": "^3.1.0"
   },
   "devDependencies": {
@@ -39,7 +38,7 @@
     "dirty-chai": "^2.0.1",
     "mocha": "^4.0.1",
     "nyc": "^11.2.1",
-    "sinon": "^4.0.0",
+    "sinon": "^4.0.2",
     "xo": "^0.18.2"
   },
   "directories": {
