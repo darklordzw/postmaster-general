@@ -48,6 +48,7 @@ class PostmasterGeneral extends EventEmitter {
 		this._publishRetryLimit = typeof options.publishRetryLimit === 'undefined' ? defaults.publishRetryLimit : options.publishRetryLimit;
 		this._replyTimeout = this._publishRetryDelay * this._publishRetryLimit * 2;
 		this._queuePrefix = options.queuePrefix || defaults.queuePrefix;
+		this._shutdownTimeout = options.shutdownTimeout || defaults.shutdownTimeout;
 		this._url = typeof options.url || defaults.url;
 
 		// Configure the logger.
@@ -166,6 +167,34 @@ class PostmasterGeneral extends EventEmitter {
 
 		await attemptConnect();
 		await this._assertTopography();
+	}
+
+	/**
+	 * Called to safely shutdown the AMQP connection while allowing outstanding messages to process.
+	 */
+	async shutdown() {
+		const shutdownRetryDelay = 1000;
+		const retryLimit = this._shutdownTimeout / shutdownRetryDelay;
+		let retryAttempts = 0;
+
+		const attempt = async () => {
+			retryAttempts++;
+
+			if ((this._connecting || this.outstandingMessageCount > 0) && retryAttempts < retryLimit) {
+				await Promise.delay(shutdownRetryDelay);
+				return attempt();
+			}
+
+			try {
+				await this._connection.close();
+			} catch (err) {}
+		};
+
+		try {
+			await this.stopConsuming();
+		} catch (err) {}
+
+		return attempt();
 	}
 
 	/**

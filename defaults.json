@@ -22,5 +22,6 @@
 	"publishRetryDelay": 1000,
 	"publishRetryLimit": 3,
 	"queuePrefix": "postmaster.queue",
+	"shutdownTimout": 30000,
 	"url": "amqp://guest:guest@localhost:5672"
 }
