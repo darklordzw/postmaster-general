@@ -119,7 +119,7 @@ class PostmasterGeneral extends EventEmitter {
 			const reconnect = async (err) => {
 				try {
 					if (!this._connecting) {
-						this._logger.warn(`postmaster-general lost AMQP connection and will try to reconnect! Error: ${err.message}`);
+						this._logger.warn(`postmaster-general lost AMQP connection and will try to reconnect! err: ${err.message}`);
 						await attemptConnect();
 						await this._assertTopography();
 						if (this._shouldConsume) {
@@ -128,7 +128,7 @@ class PostmasterGeneral extends EventEmitter {
 						this._logger.warn('postmaster-general restored AMQP connection successfully!');
 					}
 				} catch (err) {
-					this.emit('error', new Error(`postmaster-general was unable to re-establish AMQP connection! Error: ${err.message}`));
+					this.emit('error', new Error(`postmaster-general was unable to re-establish AMQP connection! err: ${err.message}`));
 				}
 			};
 
@@ -160,12 +160,14 @@ class PostmasterGeneral extends EventEmitter {
 					await Promise.delay(this._connectRetryDelay);
 					return attemptConnect();
 				}
-				this._logger.error(`postmaster-general failed to establish AMQP connection after ${connectionAttempts} attempts!`, err);
+				this._logger.error(`postmaster-general failed to establish AMQP connection after ${connectionAttempts} attempts! err: ${err.message}`);
 				throw err;
 			}
 		};
 
+		this._logger.info('Starting postmaster-general connection...');
 		await attemptConnect();
+		this._logger.info('postmaster-general connection established!');
 		await this._assertTopography();
 	}
 
@@ -188,7 +190,11 @@ class PostmasterGeneral extends EventEmitter {
 			try {
 				await this._connection.close();
 			} catch (err) {}
+
+			this._logger.info('postmaster-general shutdown successfully!');
 		};
+
+		this._logger.info('postmaster-general shutting down...');
 
 		try {
 			await this.stopConsuming();
@@ -205,6 +211,7 @@ class PostmasterGeneral extends EventEmitter {
 	 * @returns {Promise} Promise that resolves when the exchange has been asserted.
 	 */
 	async assertExchange(name, type, options) {
+		this._logger.debug(`postmaster-general asserting exchange name: ${name} type: ${type} options: ${JSON.stringify(options)}`);
 		await this._channels.topography.assertExchange(name, type, options);
 		this._topography.exchanges[name] = { name, type, options };
 	}
@@ -216,6 +223,7 @@ class PostmasterGeneral extends EventEmitter {
 	 * @returns {Promise} Promise that resolves when the queue has been asserted.
 	 */
 	async assertQueue(name, options) {
+		this._logger.debug(`postmaster-general asserting queue name: ${name} options: ${JSON.stringify(options)}`);
 		await this._channels.topography.assertQueue(name, options);
 		this._topography.queues[name] = { name, options };
 	}
@@ -229,6 +237,7 @@ class PostmasterGeneral extends EventEmitter {
 	 * @returns {Promise} Promise that resolves when the binding is complete.
 	 */
 	async assertBinding(queue, exchange, topic, options) {
+		this._logger.debug(`postmaster-general asserting binding queue: ${queue} exchange: ${exchange} topic: ${topic} options: ${JSON.stringify(options)}`);
 		await this._channels.topography.bindQueue(queue, exchange, topic, options);
 		this._topography.bindings[`${queue}_${exchange}`] = { queue, exchange, topic, options };
 	}
@@ -243,12 +252,14 @@ class PostmasterGeneral extends EventEmitter {
 		// Assert exchanges.
 		for (const key of this._topography.exchanges.keys()) {
 			const exchange = this._topography.exchanges[key];
+			this._logger.debug(`postmaster-general asserting exchange name: ${exchange.name} type: ${exchange.type} options: ${JSON.stringify(exchange.options)}`);
 			topographyPromises.push(this._channels.topography.assertExchange(exchange.name, exchange.type, exchange.options));
 		}
 
 		// Assert consumer queues.
 		for (const key of this._topography.queues.keys()) {
 			const queue = this._topography.queues[key];
+			this._logger.debug(`postmaster-general asserting queue name: ${queue.name} options: ${JSON.stringify(queue.options)}`);
 			topographyPromises.push(this._channels.topography.assertQueue(queue.name, queue.options));
 		}
 
@@ -258,6 +269,7 @@ class PostmasterGeneral extends EventEmitter {
 		// Bind listeners.
 		await Promise.map(this._topography.bindings.keys(), (key) => {
 			const binding = this._topography.bindings[key];
+			this._logger.debug(`postmaster-general asserting binding queue: ${binding.queue} exchange: ${binding.exchange} topic: ${binding.topic} options: ${JSON.stringify(binding.options)}`);
 			return this._channels.topography.bindQueue(binding.queue, binding.exchange, binding.topic, binding.options);
 		});
 	}
@@ -275,13 +287,17 @@ class PostmasterGeneral extends EventEmitter {
 		if (this._topography.queues.reply) {
 			const replyQueue = this._topography.queues.reply;
 			this._replyConsumerTag = await this._channels.consumers[replyQueue.name].consume(replyQueue.name, this._handleReply, replyQueue.options);
+			this._logger.debug(`postmaster-general starting consuming from queue: ${replyQueue.name}`);
 		}
 
 		await Promise.map(this._topography.bindings.keys(), async (key) => {
 			const binding = this._topography.bindings[key];
 			const consumerTag = await this._channels.consumers[binding.queue].consume(binding.queue, this._handlers[binding.topic].callback, binding.options);
 			this._handlers[binding.topic].consumerTag = consumerTag;
+			this._logger.debug(`postmaster-general starting consuming from queue: ${binding.queue}`);
 		});
+
+		this._logger.info('postmaster-general started consuming on all queues!');
 	}
 
 	/**
@@ -297,17 +313,20 @@ class PostmasterGeneral extends EventEmitter {
 		if (this._replyConsumerTag && cancelReplies) {
 			await this._channels.consumers[this._topography.queues.reply.name].cancel(this._replyConsumerTag);
 			this._replyConsumerTag = null;
+			this._logger.debug(`postmaster-general stopped consuming from queue ${this._topography.queues.reply.name}`);
 		}
 
-		await Promise.map(this._topography.bindings.keys(), (key) => {
+		await Promise.map(this._topography.bindings.keys(), async (key) => {
 			const binding = this._topography.bindings[key];
 			const consumerTag = JSON.parse(JSON.stringify(this._handlers[binding.topic].consumerTag));
 			if (consumerTag) {
 				delete this._handlers[binding.topic].consumerTag;
-				return this._channels.consumers[binding.queue].cancel(consumerTag);
+				await this._channels.consumers[binding.queue].cancel(consumerTag);
+				this._logger.debug(`postmaster-general stopped consuming from queue ${binding.queue}`);
 			}
-			return Promise.resolve();
 		});
+
+		this._logger.info('postmaster-general stopped consuming from all queues!');
 	}
 
 	/**
@@ -406,7 +425,7 @@ class PostmasterGeneral extends EventEmitter {
 			body = (msg.content || '{}').toString();
 			body = JSON.parse(body);
 		} catch (err) {
-			this._logger.error(new Error(`postmaster-general failed to parse message body due to invalid JSON!`), body);
+			this._logger.error('postmaster-general failed to parse message body due to invalid JSON!');
 			return;
 		}
 
