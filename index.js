@@ -28,7 +28,6 @@ class PostmasterGeneral extends EventEmitter {
 		this._channels = {};
 		this._handlers = {};
 		this._handlerTimingsTimeout = null;
-		this._outstandingMessages = new Set();
 		this._replyConsumerTag = null;
 		this._replyHandlers = {};
 		this._shouldConsume = false;
@@ -46,6 +45,8 @@ class PostmasterGeneral extends EventEmitter {
 		this._heartbeat = typeof options.heartbeat === 'undefined' ? defaults.heartbeat : options.heartbeat;
 		this._publishRetryDelay = typeof options.publishRetryDelay === 'undefined' ? defaults.publishRetryDelay : options.publishRetryDelay;
 		this._publishRetryLimit = typeof options.publishRetryLimit === 'undefined' ? defaults.publishRetryLimit : options.publishRetryLimit;
+		this._removeListenerRetryDelay = typeof options.removeListenerRetryDelay === 'undefined' ? defaults.removeListenerRetryDelay : options.removeListenerRetryDelay;
+		this._removeListenerRetryLimit = typeof options.removeListenerRetryLimit === 'undefined' ? defaults.removeListenerRetryLimit : options.removeListenerRetryLimit;
 		this._replyTimeout = this._publishRetryDelay * this._publishRetryLimit * 2;
 		this._queuePrefix = options.queuePrefix || defaults.queuePrefix;
 		this._shutdownTimeout = options.shutdownTimeout || defaults.shutdownTimeout;
@@ -69,7 +70,14 @@ class PostmasterGeneral extends EventEmitter {
 	 * Accessor property for retrieving the number of messages being handled, subscribed and replies.
 	 */
 	get outstandingMessageCount() {
-		return this._outstandingMessages.size + this._replyHandlers.keys().length;
+		const listenerCount = this._handlers.keys().reduce((sum, key) => {
+			if (this._handlers[key].outstandingMessages) {
+				return sum + this._handlers[key].outstandingMessages.size();
+			}
+			return sum;
+		});
+
+		return listenerCount + this._replyHandlers.keys().length;
 	}
 
 	/**
@@ -108,10 +116,12 @@ class PostmasterGeneral extends EventEmitter {
 			// We always want to start on a clean-slate when we connect.
 			// Cancel outstanding messages, clear all consumers, and reset the connection.
 			try {
-				this._outstandingMessages.clear();
 				this._replyConsumerTag = null;
 				for (const key of this._handlers.keys()) {
 					delete this._handlers[key].consumerTag;
+					if (this._handlers[key].outstandingMessages) {
+						this._handlers[key].outstandingMessages.clear();
+					}
 				}
 				await this._connection.close();
 			} catch (err) {}
@@ -339,7 +349,8 @@ class PostmasterGeneral extends EventEmitter {
 	 */
 	async _ackMessageAndReply(channel, msg, pattern, reply) {
 		try {
-			if (this._outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
+			const topic = this._resolveTopic(pattern);
+			if (this._handlers[topic] && this._handlers[topic].outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
 				await channel.ack(msg);
 				if (msg.properties.replyTo && msg.properties.correlationId) {
 					reply = reply || {};
@@ -352,7 +363,7 @@ class PostmasterGeneral extends EventEmitter {
 					};
 					await this._channels.replyPublish.sendToQueue(msg.properties.replyTo, Buffer.from(JSON.stringify(reply)), options);
 				}
-				this._outstandingMessages.delete(`${pattern}_${msg.properties.messageId}`);
+				this._handlers[topic].outstandingMessages.delete(`${pattern}_${msg.properties.messageId}`);
 			} else {
 				this._logger.warn(`postmaster-general skipping message ack due to connection failure! message: ${pattern} messageId: ${msg.properties.messageId}`);
 			}
@@ -372,7 +383,8 @@ class PostmasterGeneral extends EventEmitter {
 	 */
 	async _nackMessageAndReply(channel, msg, pattern, reply) {
 		try {
-			if (this._outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
+			const topic = this._resolveTopic(pattern);
+			if (this._handlers[topic] && this._handlers[topic].outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
 				await channel.nack(msg, false, false);
 				if (msg.properties.replyTo && msg.properties.correlationId) {
 					reply = reply || 'An unknown error occurred during processing!';
@@ -385,7 +397,7 @@ class PostmasterGeneral extends EventEmitter {
 					};
 					await this._channels.replyPublish.sendToQueue(msg.properties.replyTo, Buffer.from(JSON.stringify({ err: reply })), options);
 				}
-				this._outstandingMessages.delete(`${pattern}_${msg.properties.messageId}`);
+				this._handlers[topic].outstandingMessages.delete(`${pattern}_${msg.properties.messageId}`);
 			} else {
 				this._logger.warn(`postmaster-general skipping message nack due to connection failure! message: ${pattern} messageId: ${msg.properties.messageId}`);
 			}
@@ -404,9 +416,10 @@ class PostmasterGeneral extends EventEmitter {
 	 */
 	async _rejectMessage(channel, msg, pattern) {
 		try {
-			if (this._outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
+			const topic = this._resolveTopic(pattern);
+			if (this._handlers[topic] && this._handlers[topic].outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
 				await channel.reject(msg);
-				this._outstandingMessages.delete(`${pattern}_${msg.properties.messageId}`);
+				this._handlers[topic].outstandingMessages.delete(`${pattern}_${msg.properties.messageId}`);
 			} else {
 				this._logger.warn(`postmaster-general skipping message rejection due to connection failure! message: ${pattern} messageId: ${msg.properties.messageId}`);
 			}
@@ -515,7 +528,7 @@ class PostmasterGeneral extends EventEmitter {
 		await this.assertBinding(queueName, options.exchange.name, topic, options.binding);
 
 		// Define the callback handler.
-		this._handlers[topic] = {};
+		this._handlers[topic] = { outstandingMessages: new Set() };
 		this._handlers[topic].callback = async (msg) => {
 			const start = new Date().getTime();
 
@@ -524,7 +537,7 @@ class PostmasterGeneral extends EventEmitter {
 				msg.properties.headers = msg.properties.headers || {};
 				msg.properties.messageId = msg.properties.messageId || msg.properties.correlationId;
 
-				this._outstandingMessages.add(`${pattern}_${msg.properties.messageId}`);
+				this._handlers[topic].outstandingMessages.add(`${pattern}_${msg.properties.messageId}`);
 
 				let body = (msg.content || '{}').toString();
 				body = JSON.parse(body);
@@ -553,25 +566,48 @@ class PostmasterGeneral extends EventEmitter {
 
 	/**
 	 * Called to remove a listener. Note that this call DOES NOT delete any queues
-	 * or exchanges. It is recommended that these constructs be made to auto-delete or expire.
+	 * or exchanges. It is recommended that these constructs be made to auto-delete or expire
+	 * if they are not persistent.
 	 * @param {String} pattern The pattern to match.
-	 * @param {String} prefix The queue prefix to match.
 	 * @param {String} exchange The name of the exchange to remove the binding.
-	 * @returns {Promise} Promise that resolves the listener has been removed.
+	 * @param {String} [prefix] The queue prefix to match.
+	 * @returns {Promise} Promise that resolves when the listener has been removed.
 	 */
-	async removeListener(pattern, prefix, exchange) {
+	async removeListener(pattern, exchange, prefix) {
+		let attempts = 0;
+
 		const topic = this._resolveTopic(pattern);
 		const queueName = (prefix || this._queuePrefix) + '.' + topic;
-		const consumerTag = JSON.parse(JSON.stringify(this._handlers[topic].consumerTag));
-		delete this._handlers[topic];
-		delete this._topography.bindings[`${queueName}_${exchange}`];
-		if (this._channels.consumers[queueName]) {
-			if (consumerTag) {
-				await this._channels.consumers[queueName].cancel(consumerTag);
+
+		const attempt = async () => {
+			attempts++;
+
+			if (this._connecting) {
+				await Promise.delay(this._removeListenerRetryDelay);
+				return attempt();
 			}
-			await this._channels.consumers[queueName].close();
-			delete this._channels.consumers[queueName];
-		}
+
+			try {
+				if (this._channels.consumers[queueName]) {
+					if (this._handlers[topic].consumerTag) {
+						await this._channels.consumers[queueName].cancel(this._handlers[topic].consumerTag);
+					}
+					this._handlers[topic].outstandingMessages.clear();
+					await this._channels.consumers[queueName].close();
+					delete this._channels.consumers[queueName];
+				}
+				delete this._handlers[topic];
+				delete this._topography.bindings[`${queueName}_${exchange}`];
+			} catch (err) {
+				if (attempts < this._removeListenerRetryLimit) {
+					await Promise.delay(this._removeListenerRetryDelay);
+					return attempt();
+				}
+				throw err;
+			}
+		};
+
+		return attempt();
 	}
 
 	/**
