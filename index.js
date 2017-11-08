@@ -368,7 +368,7 @@ class PostmasterGeneral extends EventEmitter {
 				this._logger.warn(`postmaster-general skipping message ack due to connection failure! message: ${pattern} messageId: ${msg.properties.messageId}`);
 			}
 		} catch (err) {
-			this._logger.warn(new Error(`postmaster-general failed to ack a message! message: ${pattern} messageId: ${msg.properties.messageId} err: ${err.message}`));
+			this._logger.warn(`postmaster-general failed to ack a message! message: ${pattern} messageId: ${msg.properties.messageId} err: ${err.message}`);
 		}
 	}
 
@@ -402,7 +402,7 @@ class PostmasterGeneral extends EventEmitter {
 				this._logger.warn(`postmaster-general skipping message nack due to connection failure! message: ${pattern} messageId: ${msg.properties.messageId}`);
 			}
 		} catch (err) {
-			this._logger.warn(new Error(`postmaster-general failed to nack a message! message: ${pattern} messageId: ${msg.properties.messageId} err: ${err.message}`));
+			this._logger.warn(`postmaster-general failed to nack a message! message: ${pattern} messageId: ${msg.properties.messageId} err: ${err.message}`);
 		}
 	}
 
@@ -424,7 +424,7 @@ class PostmasterGeneral extends EventEmitter {
 				this._logger.warn(`postmaster-general skipping message rejection due to connection failure! message: ${pattern} messageId: ${msg.properties.messageId}`);
 			}
 		} catch (err) {
-			this._logger.warn(new Error(`postmaster-general failed to reject a message! message: ${pattern} messageId: ${msg.properties.messageId} err: ${err.message}`));
+			this._logger.warn(`postmaster-general failed to reject a message! message: ${pattern} messageId: ${msg.properties.messageId} err: ${err.message}`);
 		}
 	}
 
