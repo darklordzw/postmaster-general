@@ -31,7 +31,7 @@ class PostmasterGeneral extends EventEmitter {
 		this._replyConsumerTag = null;
 		this._replyHandlers = {};
 		this._shouldConsume = false;
-		this._topography = { exchanges: defaults.exchanges };
+		this._topology = { exchanges: defaults.exchanges };
 		this._createChannel = null;
 
 		// Set options and defaults.
@@ -63,7 +63,7 @@ class PostmasterGeneral extends EventEmitter {
 		// Reply queue belongs only to this instance, but we want it to survive reconnects. Thus, we set an expiration for the queue.
 		const replyQueueName = `postmaster.reply.${this._queuePrefix}.${uuidv4()}`;
 		const replyQueueExpiration = (this._connectRetryDelay * this._connectRetryLimit) + (60000 * this._connectRetryLimit);
-		this._topography.queues = { reply: { name: replyQueueName, noAck: true, expires: replyQueueExpiration } };
+		this._topology.queues = { reply: { name: replyQueueName, noAck: true, expires: replyQueueExpiration } };
 	}
 
 	/**
@@ -131,7 +131,7 @@ class PostmasterGeneral extends EventEmitter {
 					if (!this._connecting) {
 						this._logger.warn(`postmaster-general lost AMQP connection and will try to reconnect! err: ${err.message}`);
 						await attemptConnect();
-						await this._assertTopography();
+						await this._assertTopology();
 						if (this._shouldConsume) {
 							await this.startConsuming();
 						}
@@ -155,9 +155,9 @@ class PostmasterGeneral extends EventEmitter {
 				this._channels = await Promise.props({
 					publish: this._createChannel(),
 					replyPublish: this._createChannel(),
-					topography: this._createChannel(),
-					consumers: Promise.reduce(this._topography.queues.keys(), async (consumerMap, key) => {
-						const queue = this._topography.queues[key];
+					topology: this._createChannel(),
+					consumers: Promise.reduce(this._topology.queues.keys(), async (consumerMap, key) => {
+						const queue = this._topology.queues[key];
 						consumerMap[queue.name] = await this._createChannel();
 					})
 				});
@@ -178,7 +178,7 @@ class PostmasterGeneral extends EventEmitter {
 		this._logger.info('Starting postmaster-general connection...');
 		await attemptConnect();
 		this._logger.info('postmaster-general connection established!');
-		await this._assertTopography();
+		await this._assertTopology();
 	}
 
 	/**
@@ -222,8 +222,8 @@ class PostmasterGeneral extends EventEmitter {
 	 */
 	async assertExchange(name, type, options) {
 		this._logger.debug(`postmaster-general asserting exchange name: ${name} type: ${type} options: ${JSON.stringify(options)}`);
-		await this._channels.topography.assertExchange(name, type, options);
-		this._topography.exchanges[name] = { name, type, options };
+		await this._channels.topology.assertExchange(name, type, options);
+		this._topology.exchanges[name] = { name, type, options };
 	}
 
 	/**
@@ -234,8 +234,8 @@ class PostmasterGeneral extends EventEmitter {
 	 */
 	async assertQueue(name, options) {
 		this._logger.debug(`postmaster-general asserting queue name: ${name} options: ${JSON.stringify(options)}`);
-		await this._channels.topography.assertQueue(name, options);
-		this._topography.queues[name] = { name, options };
+		await this._channels.topology.assertQueue(name, options);
+		this._topology.queues[name] = { name, options };
 	}
 
 	/**
@@ -248,39 +248,39 @@ class PostmasterGeneral extends EventEmitter {
 	 */
 	async assertBinding(queue, exchange, topic, options) {
 		this._logger.debug(`postmaster-general asserting binding queue: ${queue} exchange: ${exchange} topic: ${topic} options: ${JSON.stringify(options)}`);
-		await this._channels.topography.bindQueue(queue, exchange, topic, options);
-		this._topography.bindings[`${queue}_${exchange}`] = { queue, exchange, topic, options };
+		await this._channels.topology.bindQueue(queue, exchange, topic, options);
+		this._topology.bindings[`${queue}_${exchange}`] = { queue, exchange, topic, options };
 	}
 
 	/**
 	 * Called to assert any RabbitMQ topology after a successful connection is established.
-	 * @returns {Promise} Promise resolving when all defined topography has been confirmed.
+	 * @returns {Promise} Promise resolving when all defined topology has been confirmed.
 	 */
-	async _assertTopography() {
-		const topographyPromises = [];
+	async _assertTopology() {
+		const topologyPromises = [];
 
 		// Assert exchanges.
-		for (const key of this._topography.exchanges.keys()) {
-			const exchange = this._topography.exchanges[key];
+		for (const key of this._topology.exchanges.keys()) {
+			const exchange = this._topology.exchanges[key];
 			this._logger.debug(`postmaster-general asserting exchange name: ${exchange.name} type: ${exchange.type} options: ${JSON.stringify(exchange.options)}`);
-			topographyPromises.push(this._channels.topography.assertExchange(exchange.name, exchange.type, exchange.options));
+			topologyPromises.push(this._channels.topology.assertExchange(exchange.name, exchange.type, exchange.options));
 		}
 
 		// Assert consumer queues.
-		for (const key of this._topography.queues.keys()) {
-			const queue = this._topography.queues[key];
+		for (const key of this._topology.queues.keys()) {
+			const queue = this._topology.queues[key];
 			this._logger.debug(`postmaster-general asserting queue name: ${queue.name} options: ${JSON.stringify(queue.options)}`);
-			topographyPromises.push(this._channels.topography.assertQueue(queue.name, queue.options));
+			topologyPromises.push(this._channels.topology.assertQueue(queue.name, queue.options));
 		}
 
 		// Await all assertions before asserting bindings.
-		await Promise.all(topographyPromises);
+		await Promise.all(topologyPromises);
 
 		// Bind listeners.
-		await Promise.map(this._topography.bindings.keys(), (key) => {
-			const binding = this._topography.bindings[key];
+		await Promise.map(this._topology.bindings.keys(), (key) => {
+			const binding = this._topology.bindings[key];
 			this._logger.debug(`postmaster-general asserting binding queue: ${binding.queue} exchange: ${binding.exchange} topic: ${binding.topic} options: ${JSON.stringify(binding.options)}`);
-			return this._channels.topography.bindQueue(binding.queue, binding.exchange, binding.topic, binding.options);
+			return this._channels.topology.bindQueue(binding.queue, binding.exchange, binding.topic, binding.options);
 		});
 	}
 
@@ -294,14 +294,14 @@ class PostmasterGeneral extends EventEmitter {
 		this._resetHandlerTimings();
 
 		// Since the reply queue isn't bound to an exchange, we need to handle it separately.
-		if (this._topography.queues.reply) {
-			const replyQueue = this._topography.queues.reply;
+		if (this._topology.queues.reply) {
+			const replyQueue = this._topology.queues.reply;
 			this._replyConsumerTag = await this._channels.consumers[replyQueue.name].consume(replyQueue.name, this._handleReply, replyQueue.options);
 			this._logger.debug(`postmaster-general starting consuming from queue: ${replyQueue.name}`);
 		}
 
-		await Promise.map(this._topography.bindings.keys(), async (key) => {
-			const binding = this._topography.bindings[key];
+		await Promise.map(this._topology.bindings.keys(), async (key) => {
+			const binding = this._topology.bindings[key];
 			const consumerTag = await this._channels.consumers[binding.queue].consume(binding.queue, this._handlers[binding.topic].callback, binding.options);
 			this._handlers[binding.topic].consumerTag = consumerTag;
 			this._logger.debug(`postmaster-general starting consuming from queue: ${binding.queue}`);
@@ -321,13 +321,13 @@ class PostmasterGeneral extends EventEmitter {
 		this._resetHandlerTimings();
 
 		if (this._replyConsumerTag && cancelReplies) {
-			await this._channels.consumers[this._topography.queues.reply.name].cancel(this._replyConsumerTag);
+			await this._channels.consumers[this._topology.queues.reply.name].cancel(this._replyConsumerTag);
 			this._replyConsumerTag = null;
-			this._logger.debug(`postmaster-general stopped consuming from queue ${this._topography.queues.reply.name}`);
+			this._logger.debug(`postmaster-general stopped consuming from queue ${this._topology.queues.reply.name}`);
 		}
 
-		await Promise.map(this._topography.bindings.keys(), async (key) => {
-			const binding = this._topography.bindings[key];
+		await Promise.map(this._topology.bindings.keys(), async (key) => {
+			const binding = this._topology.bindings[key];
 			const consumerTag = JSON.parse(JSON.stringify(this._handlers[binding.topic].consumerTag));
 			if (consumerTag) {
 				delete this._handlers[binding.topic].consumerTag;
@@ -445,7 +445,7 @@ class PostmasterGeneral extends EventEmitter {
 		msg.properties = msg.properties || {};
 		msg.properties.headers = msg.properties.headers || {};
 
-		if (!msg.properties.correlationId || !this._replyHandlers[msg.properties.correlationId] || msg.properties.replyTo !== this._topography.queues.reply.name) {
+		if (!msg.properties.correlationId || !this._replyHandlers[msg.properties.correlationId] || msg.properties.replyTo !== this._topology.queues.reply.name) {
 			this._logger.warn(`postmaster-general reply handler received an invalid reply! correlationId: ${msg.properties.correlationId}`);
 		} else {
 			if (body.err) {
@@ -499,7 +499,7 @@ class PostmasterGeneral extends EventEmitter {
 	}
 
 	/**
-	 * Adds a new listener for the specified pattern, asserting any associated topography.
+	 * Adds a new listener for the specified pattern, asserting any associated topology.
 	 * @param {String} pattern The pattern to bind to.
 	 * @param {Function} callback The callback function to handle messages. This function MUST return a promise!
 	 * @param {Object} [options] Additional options for queues, exchanges, and binding.
@@ -519,7 +519,7 @@ class PostmasterGeneral extends EventEmitter {
 		// Configure exchange options
 		options.exchange = options.exchange || this._defaultExchange;
 
-		// Grab a channel and assert the topography.
+		// Grab a channel and assert the topology.
 		if (!this._channels.consumers[queueName]) {
 			this._channels.consumers[queueName] = await this._createChannel();
 		}
@@ -597,7 +597,7 @@ class PostmasterGeneral extends EventEmitter {
 					delete this._channels.consumers[queueName];
 				}
 				delete this._handlers[topic];
-				delete this._topography.bindings[`${queueName}_${exchange}`];
+				delete this._topology.bindings[`${queueName}_${exchange}`];
 			} catch (err) {
 				if (attempts < this._removeListenerRetryLimit) {
 					await Promise.delay(this._removeListenerRetryDelay);
@@ -679,7 +679,7 @@ class PostmasterGeneral extends EventEmitter {
 		options.contentEncoding = 'utf8';
 		options.messageId = options.messageId || uuidv4();
 		options.correlationId = options.correlationId || options.messageId;
-		options.replyTo = this._topography.queues.reply.name;
+		options.replyTo = this._topology.queues.reply.name;
 		options.timestamp = new Date().getTime();
 
 		const exchange = options.exchange || this._defaultExchange.name;
