@@ -438,8 +438,7 @@ class PostmasterGeneral extends EventEmitter {
 			body = (msg.content || '{}').toString();
 			body = JSON.parse(body);
 		} catch (err) {
-			this._logger.error('postmaster-general failed to parse message body due to invalid JSON!');
-			return;
+			body.err = 'postmaster-general failed to parse message body due to invalid JSON!';
 		}
 
 		msg.properties = msg.properties || {};
