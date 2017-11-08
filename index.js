@@ -341,17 +341,17 @@ class PostmasterGeneral extends EventEmitter {
 
 	/**
 	 * A "safe", promise-based method for acknowledging messages that is guaranteed to resolve.
-	 * @param {Object} channel The channel the message was received on.
+	 * @param {String} queueName The queue name of the channel the message was received on.
 	 * @param {Object} msg The RabbitMQ message to acknowledge.
 	 * @param {String} pattern The routing key of the message.
 	 * @param {Object} [reply] The request body of the response message to send.
 	 * @returns {Promise} Promise that resolves when the message is acknowledged.
 	 */
-	async _ackMessageAndReply(channel, msg, pattern, reply) {
+	async _ackMessageAndReply(queueName, msg, pattern, reply) {
 		try {
 			const topic = this._resolveTopic(pattern);
 			if (this._handlers[topic] && this._handlers[topic].outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
-				await channel.ack(msg);
+				await this._channels.consumers[queueName].ack(msg);
 				if (msg.properties.replyTo && msg.properties.correlationId) {
 					reply = reply || {};
 					const options = {
@@ -375,17 +375,17 @@ class PostmasterGeneral extends EventEmitter {
 	/**
 	 * A "safe", promise-based method for nacking messages that is guaranteed to resolve.
 	 * Nacked messages will not be requeued.
-	 * @param {Object} channel The channel the message was received on.
+	 * @param {String} queueName The queue name of the channel the message was received on.
 	 * @param {Object} msg The RabbitMQ message to nack.
 	 * @param {String} pattern The routing key of the message.
 	 * @param {String} [reply] The error message to end in reply.
 	 * @returns {Promise} Promise that resolves when the message is nacked.
 	 */
-	async _nackMessageAndReply(channel, msg, pattern, reply) {
+	async _nackMessageAndReply(queueName, msg, pattern, reply) {
 		try {
 			const topic = this._resolveTopic(pattern);
-			if (this._handlers[topic] && this._handlers[topic].outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
-				await channel.nack(msg, false, false);
+			if (this._channels.consumers[queueName] && this._handlers[topic] && this._handlers[topic].outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
+				await this._channels.consumers[queueName].nack(msg, false, false);
 				if (msg.properties.replyTo && msg.properties.correlationId) {
 					reply = reply || 'An unknown error occurred during processing!';
 					const options = {
@@ -409,16 +409,16 @@ class PostmasterGeneral extends EventEmitter {
 	/**
 	 * A "safe", promise-based method for rejecting messages that is guaranteed to resolve.
 	 * Rejected messages will be requeued for retry.
-	 * @param {Object} channel The channel the message was received on.
+	 * @param {String} queueName The queueName of the channel the message was received on.
 	 * @param {Object} msg The RabbitMQ message to reject.
 	 * @param {String} pattern The routing key of the message.
 	 * @returns {Promise} Promise that resolves when the message is rejected.
 	 */
-	async _rejectMessage(channel, msg, pattern) {
+	async _rejectMessage(queueName, msg, pattern) {
 		try {
 			const topic = this._resolveTopic(pattern);
-			if (this._handlers[topic] && this._handlers[topic].outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
-				await channel.reject(msg);
+			if (this._channels.consumers[queueName] && this._handlers[topic] && this._handlers[topic].outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
+				await this._channels.consumers[queueName].reject(msg);
 				this._handlers[topic].outstandingMessages.delete(`${pattern}_${msg.properties.messageId}`);
 			} else {
 				this._logger.warn(`postmaster-general skipping message rejection due to connection failure! message: ${pattern} messageId: ${msg.properties.messageId}`);
@@ -543,23 +543,12 @@ class PostmasterGeneral extends EventEmitter {
 				body = JSON.parse(body);
 
 				const reply = await callback(body);
-				await this._ackMessageAndReply(this._channels.consumers[queueName], msg, pattern, reply);
+				await this._ackMessageAndReply(queueName, msg, pattern, reply);
 				this._setHandlerTiming(pattern, start);
 			} catch (err) {
-				if (err.retry) {
-					let retryCount = msg.properties.retryCount || 0;
-					const retryLimit = msg.properties.retryLimit || 0;
-					if (retryCount < retryLimit) {
-						this._logger.warn(`postmaster-general message handler failed! Will retry message: ${pattern}`);
-						msg.properties.retryCount = retryCount++;
-						await this._rejectMessage(this._channels.consumers[queueName], msg);
-					}
-					this._setHandlerTiming(pattern, start);
-				} else {
-					this._logger.error(`postmaster-general message handler failed and cannot retry! message: ${pattern} err: `, err);
-					await this._nackMessageAndReply(this._channels.consumers[queueName], msg, pattern, err.message);
-					this._setHandlerTiming(pattern, start);
-				}
+				this._logger.error(`postmaster-general message handler failed and cannot retry! message: ${pattern} err: ${err.message}`);
+				await this._nackMessageAndReply(queueName, msg, pattern, err.message);
+				this._setHandlerTiming(pattern, start);
 			}
 		};
 	}
