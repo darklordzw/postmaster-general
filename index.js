@@ -577,9 +577,9 @@ class PostmasterGeneral extends EventEmitter {
 	/**
 	 * Publishes a fire-and-forget message that doesn't wait for an explicit response.
 	 * @param {String} routingKey The routing key to attach to the message.
-	 * @param {Object} message The message data to publish.
+	 * @param {Object} [message] The message data to publish.
 	 * @param {Object} [options] Optional publishing options.
-	 * @returns {Promise} A promise that resolves when the message is successfully published.
+	 * @returns {Promise} A promise that resolves when the message is published or publishing has failed.
 	 */
 	async publish(routingKey, message, options) {
 		let publishAttempts = 0;
@@ -594,12 +594,14 @@ class PostmasterGeneral extends EventEmitter {
 		const exchange = options.exchange || this._defaultExchange.name;
 		const msgData = Buffer.from(JSON.stringify(message || '{}'));
 
-		const attempt = async () => {
-			publishAttempts++;
+		const attempt = async (skipIncrement) => {
+			if (!skipIncrement) {
+				publishAttempts++;
+			}
 
 			if (this._connecting) {
 				await Promise.delay(this._publishRetryDelay);
-				return attempt();
+				return attempt(true);
 			}
 
 			try {
@@ -607,8 +609,7 @@ class PostmasterGeneral extends EventEmitter {
 				if (published) {
 					publishAttempts = 0;
 				} else {
-					await Promise.delay(this._publishRetryDelay);
-					return attempt();
+					throw new Error(`postmaster-general failed publishing message due to full publish buffer and may retry! message: ${routingKey}`);
 				}
 			} catch (err) {
 				if (publishAttempts < this._publishRetryLimit) {
@@ -619,13 +620,17 @@ class PostmasterGeneral extends EventEmitter {
 			}
 		};
 
-		return attempt();
+		try {
+			await attempt();
+		} catch (err) {
+			this._logger.error(`postmaster-general failed to publish a fire-and-forget message! message: ${routingKey} err: ${err.message}`);
+		}
 	}
 
 	/**
 	 * Publishes an RPC-style message that waits for a response.
 	 * @param {String} routingKey The routing key to attach to the message.
-	 * @param {Object} message The message data to publish.
+	 * @param {Object} [message] The message data to publish.
 	 * @param {Object} [options] Optional publishing options.
 	 * @returns {Promise} A promise that resolves when the message is successfully published and a reply is received.
 	 */
@@ -644,8 +649,10 @@ class PostmasterGeneral extends EventEmitter {
 		const exchange = options.exchange || this._defaultExchange.name;
 		const msgData = Buffer.from(JSON.stringify(message || '{}'));
 
-		const attempt = async () => {
-			publishAttempts++;
+		const attempt = async (skipIncrement) => {
+			if (!skipIncrement) {
+				publishAttempts++;
+			}
 
 			if (this._connecting) {
 				await Promise.delay(this._publishRetryDelay);
@@ -657,8 +664,7 @@ class PostmasterGeneral extends EventEmitter {
 				if (published) {
 					publishAttempts = 0;
 				} else {
-					await Promise.delay(this._publishRetryDelay);
-					return attempt();
+					throw new Error(`postmaster-general failed publishing message due to full publish buffer and may retry! message: ${routingKey}`);
 				}
 
 				return new Promise((resolve, reject) => {
