@@ -54,11 +54,7 @@ class PostmasterGeneral extends EventEmitter {
 
 		// Configure the logger.
 		this._logger = log4js.getLogger('postmaster-general');
-		if (options.logLevel) {
-			this._logger.level = options.logLevel;
-		} else {
-			this._logger.level = process.env.DEBUG ? 'debug' : defaults.logLevel;
-		}
+		this._logger.level = options.logLevel ? options.logLevel : defaults.logLevel;
 
 		// Configure reply queue topology.
 		// Reply queue belongs only to this instance, but we want it to survive reconnects. Thus, we set an expiration for the queue.
@@ -108,10 +104,10 @@ class PostmasterGeneral extends EventEmitter {
 		let connectionAttempts = 0;
 
 		const attemptConnect = async () => {
+			this._logger.debug('Attempting to connect to RabbitMQ...');
+
 			connectionAttempts++;
 			this._connecting = true;
-
-			this._logger.debug('Attempting to connect to RabbitMQ...');
 
 			// We always want to start on a clean-slate when we connect.
 			// Cancel outstanding messages, clear all consumers, and reset the connection.
@@ -681,7 +677,7 @@ class PostmasterGeneral extends EventEmitter {
 				}
 			} catch (err) {
 				if (publishAttempts < this._publishRetryLimit) {
-					this._logger.debug(`Failed to publish fire-and-forget message: ${routingKey} err: ${err.message} will retry...`);
+					this._logger.debug(`Failed to publish fire-and-forget message and will retry! message: ${routingKey} err: ${err.message}`);
 					await Promise.delay(this._publishRetryDelay);
 					return attempt();
 				}
@@ -749,7 +745,7 @@ class PostmasterGeneral extends EventEmitter {
 				}).timeout(this._replyTimeout);
 			} catch (err) {
 				if (publishAttempts < this._publishRetryLimit) {
-					this._logger.debug(`Failed to publish RPC message: ${routingKey} err: ${err.message} will retry...`);
+					this._logger.debug(`Failed to publish RPC message and will retry! message: ${routingKey} err: ${err.message}`);
 					await Promise.delay(this._publishRetryDelay);
 					return attempt();
 				}

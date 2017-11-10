@@ -15,7 +15,7 @@
 	},
 	"handlerTimingResetInterval": 30000,
 	"heartbeat": 30,
-	"logLevel": "info",	
+	"logLevel": "warn",	
 	"publishRetryDelay": 1000,
 	"publishRetryLimit": 3,
 	"queuePrefix": "postmaster.queue",
