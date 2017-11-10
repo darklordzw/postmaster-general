@@ -8,17 +8,14 @@
 			"name": "postmaster.dlx",
 			"type": "topic"
 		},
-		"logging": {
-			"name": "postmaster.logging",
-			"type": "topic"
-		},
 		"topic": {
 			"name": "postmaster.topic",
 			"type": "topic"
 		}
 	},
 	"handlerTimingResetInterval": 30000,
-	"heartbeat": 30,	
+	"heartbeat": 30,
+	"logLevel": "info",	
 	"publishRetryDelay": 1000,
 	"publishRetryLimit": 3,
 	"queuePrefix": "postmaster.queue",

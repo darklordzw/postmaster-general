@@ -53,10 +53,11 @@ class PostmasterGeneral extends EventEmitter {
 		this._url = typeof options.url || defaults.url;
 
 		// Configure the logger.
-		this._logger = options.logger;
-		if (!this._logger) {
-			this._logger = log4js.getLogger();
-			this._logger.level = process.env.DEBUG ? 'debug' : 'info';
+		this._logger = log4js.getLogger('postmaster-general');
+		if (options.logLevel) {
+			this._logger.level = options.logLevel;
+		} else {
+			this._logger.level = process.env.DEBUG ? 'debug' : defaults.logLevel;
 		}
 
 		// Configure reply queue topology.
@@ -71,10 +72,7 @@ class PostmasterGeneral extends EventEmitter {
 	 */
 	get outstandingMessageCount() {
 		const listenerCount = this._handlers.keys().reduce((sum, key) => {
-			if (this._handlers[key].outstandingMessages) {
-				return sum + this._handlers[key].outstandingMessages.size();
-			}
-			return sum;
+			return sum + this._handlers[key].outstandingMessages.size();
 		});
 
 		return listenerCount + this._replyHandlers.keys().length;
@@ -95,7 +93,7 @@ class PostmasterGeneral extends EventEmitter {
 	}
 
 	/**
-	 * Called to resolve the AMQP topic key corresponding to an address.
+	 * Called to resolve the RabbitMQ topic key corresponding to an address.
 	 * @param {String} pattern
 	 */
 	_resolveTopic(pattern) {
@@ -113,9 +111,12 @@ class PostmasterGeneral extends EventEmitter {
 			connectionAttempts++;
 			this._connecting = true;
 
+			this._logger.debug('Attempting to connect to RabbitMQ...');
+
 			// We always want to start on a clean-slate when we connect.
 			// Cancel outstanding messages, clear all consumers, and reset the connection.
 			try {
+				this._logger.debug('Closing any existing connections...');
 				this._replyConsumerTag = null;
 				for (const key of this._handlers.keys()) {
 					delete this._handlers[key].consumerTag;
@@ -129,20 +130,23 @@ class PostmasterGeneral extends EventEmitter {
 			const reconnect = async (err) => {
 				try {
 					if (!this._connecting) {
-						this._logger.warn(`postmaster-general lost AMQP connection and will try to reconnect! err: ${err.message}`);
+						this._logger.warn(`Lost RabbitMQ connection and will try to reconnect! err: ${err.message}`);
 						await attemptConnect();
 						await this._assertTopology();
 						if (this._shouldConsume) {
 							await this.startConsuming();
 						}
-						this._logger.warn('postmaster-general restored AMQP connection successfully!');
+						this._logger.warn('Restored RabbitMQ connection successfully!');
 					}
 				} catch (err) {
-					this.emit('error', new Error(`postmaster-general was unable to re-establish AMQP connection! err: ${err.message}`));
+					const errMessage = `Unable to re-establish RabbitMQ connection! err: ${err.message}`;
+					this._logger.error(errMessage);
+					this.emit('error', new Error(errMessage));
 				}
 			};
 
 			try {
+				this._logger.debug('Acquiring RabbitMQ connection...');
 				this._connection = await amqp.connect(this._url, { heartbeat: this._heartbeat });
 				this._connection.on('error', reconnect);
 
@@ -152,6 +156,7 @@ class PostmasterGeneral extends EventEmitter {
 					return channel;
 				};
 
+				this._logger.debug('Initializing channels...');
 				this._channels = await Promise.props({
 					publish: this._createChannel(),
 					replyPublish: this._createChannel(),
@@ -164,25 +169,24 @@ class PostmasterGeneral extends EventEmitter {
 
 				connectionAttempts = 0;
 				this._connecting = false;
+				this._logger.debug('Finished connecting to RabbitMQ!');
 			} catch (err) {
 				if (connectionAttempts < this._connectRetryLimit) {
-					this._logger.warn('postmaster-general failed to establish AMQP connection! Retrying...');
+					this._logger.warn('Failed to establish RabbitMQ connection! Retrying...');
 					await Promise.delay(this._connectRetryDelay);
 					return attemptConnect();
 				}
-				this._logger.error(`postmaster-general failed to establish AMQP connection after ${connectionAttempts} attempts! err: ${err.message}`);
+				this._logger.error(`Failed to establish RabbitMQ connection after ${connectionAttempts} attempts! err: ${err.message}`);
 				throw err;
 			}
 		};
 
-		this._logger.info('Starting postmaster-general connection...');
 		await attemptConnect();
-		this._logger.info('postmaster-general connection established!');
 		await this._assertTopology();
 	}
 
 	/**
-	 * Called to safely shutdown the AMQP connection while allowing outstanding messages to process.
+	 * Called to safely shutdown the RabbitMQ connection while allowing outstanding messages to process.
 	 */
 	async shutdown() {
 		const shutdownRetryDelay = 1000;
@@ -192,7 +196,14 @@ class PostmasterGeneral extends EventEmitter {
 		const attempt = async () => {
 			retryAttempts++;
 
+			this._logger.debug('Attempting shutdown...');
+
 			if ((this._connecting || this.outstandingMessageCount > 0) && retryAttempts < retryLimit) {
+				if (this._connecting) {
+					this._logger.debug('Unable to shutdown while attempting reconnect! Will retry...');
+				} else {
+					this._logger.debug(`Unable to shutdown while processing ${this.outstandingMessageCount} messages! Will retry...`);
+				}
 				await Promise.delay(shutdownRetryDelay);
 				return attempt();
 			}
@@ -201,10 +212,8 @@ class PostmasterGeneral extends EventEmitter {
 				await this._connection.close();
 			} catch (err) {}
 
-			this._logger.info('postmaster-general shutdown successfully!');
+			this._logger.debug('Shutdown completed successfully!');
 		};
-
-		this._logger.info('postmaster-general shutting down...');
 
 		try {
 			await this.stopConsuming();
@@ -221,7 +230,7 @@ class PostmasterGeneral extends EventEmitter {
 	 * @returns {Promise} Promise that resolves when the exchange has been asserted.
 	 */
 	async assertExchange(name, type, options) {
-		this._logger.debug(`postmaster-general asserting exchange name: ${name} type: ${type} options: ${JSON.stringify(options)}`);
+		this._logger.debug(`Asserting exchange name: ${name} type: ${type} options: ${JSON.stringify(options)}`);
 		await this._channels.topology.assertExchange(name, type, options);
 		this._topology.exchanges[name] = { name, type, options };
 	}
@@ -233,7 +242,7 @@ class PostmasterGeneral extends EventEmitter {
 	 * @returns {Promise} Promise that resolves when the queue has been asserted.
 	 */
 	async assertQueue(name, options) {
-		this._logger.debug(`postmaster-general asserting queue name: ${name} options: ${JSON.stringify(options)}`);
+		this._logger.debug(`Asserting queue name: ${name} options: ${JSON.stringify(options)}`);
 		await this._channels.topology.assertQueue(name, options);
 		this._topology.queues[name] = { name, options };
 	}
@@ -247,7 +256,7 @@ class PostmasterGeneral extends EventEmitter {
 	 * @returns {Promise} Promise that resolves when the binding is complete.
 	 */
 	async assertBinding(queue, exchange, topic, options) {
-		this._logger.debug(`postmaster-general asserting binding queue: ${queue} exchange: ${exchange} topic: ${topic} options: ${JSON.stringify(options)}`);
+		this._logger.debug(`Asserting binding queue: ${queue} exchange: ${exchange} topic: ${topic} options: ${JSON.stringify(options)}`);
 		await this._channels.topology.bindQueue(queue, exchange, topic, options);
 		this._topology.bindings[`${queue}_${exchange}`] = { queue, exchange, topic, options };
 	}
@@ -259,17 +268,19 @@ class PostmasterGeneral extends EventEmitter {
 	async _assertTopology() {
 		const topologyPromises = [];
 
+		this._logger.debug('Asserting pre-defined topology...');
+
 		// Assert exchanges.
 		for (const key of this._topology.exchanges.keys()) {
 			const exchange = this._topology.exchanges[key];
-			this._logger.debug(`postmaster-general asserting exchange name: ${exchange.name} type: ${exchange.type} options: ${JSON.stringify(exchange.options)}`);
+			this._logger.debug(`Asserting exchange name: ${exchange.name} type: ${exchange.type} options: ${JSON.stringify(exchange.options)}...`);
 			topologyPromises.push(this._channels.topology.assertExchange(exchange.name, exchange.type, exchange.options));
 		}
 
 		// Assert consumer queues.
 		for (const key of this._topology.queues.keys()) {
 			const queue = this._topology.queues[key];
-			this._logger.debug(`postmaster-general asserting queue name: ${queue.name} options: ${JSON.stringify(queue.options)}`);
+			this._logger.debug(`Asserting queue name: ${queue.name} options: ${JSON.stringify(queue.options)}...`);
 			topologyPromises.push(this._channels.topology.assertQueue(queue.name, queue.options));
 		}
 
@@ -279,9 +290,11 @@ class PostmasterGeneral extends EventEmitter {
 		// Bind listeners.
 		await Promise.map(this._topology.bindings.keys(), (key) => {
 			const binding = this._topology.bindings[key];
-			this._logger.debug(`postmaster-general asserting binding queue: ${binding.queue} exchange: ${binding.exchange} topic: ${binding.topic} options: ${JSON.stringify(binding.options)}`);
+			this._logger.debug(`Asserting binding queue: ${binding.queue} exchange: ${binding.exchange} topic: ${binding.topic} options: ${JSON.stringify(binding.options)}...`);
 			return this._channels.topology.bindQueue(binding.queue, binding.exchange, binding.topic, binding.options);
 		});
+
+		this._logger.debug('Finished asserting defined topology!');
 	}
 
 	/**
@@ -291,23 +304,25 @@ class PostmasterGeneral extends EventEmitter {
 	async startConsuming() {
 		this._shouldConsume = true;
 
+		this._logger.debug('Starting up consumers...');
+
 		this._resetHandlerTimings();
 
 		// Since the reply queue isn't bound to an exchange, we need to handle it separately.
 		if (this._topology.queues.reply) {
 			const replyQueue = this._topology.queues.reply;
 			this._replyConsumerTag = await this._channels.consumers[replyQueue.name].consume(replyQueue.name, this._handleReply, replyQueue.options);
-			this._logger.debug(`postmaster-general starting consuming from queue: ${replyQueue.name}`);
+			this._logger.debug(`Starting consuming from reply queue: ${replyQueue.name}...`);
 		}
 
 		await Promise.map(this._topology.bindings.keys(), async (key) => {
 			const binding = this._topology.bindings[key];
 			const consumerTag = await this._channels.consumers[binding.queue].consume(binding.queue, this._handlers[binding.topic].callback, binding.options);
 			this._handlers[binding.topic].consumerTag = consumerTag;
-			this._logger.debug(`postmaster-general starting consuming from queue: ${binding.queue}`);
+			this._logger.debug(`Starting consuming from queue: ${binding.queue}...`);
 		});
 
-		this._logger.info('postmaster-general started consuming on all queues!');
+		this._logger.debug('Finished starting all consumers!');
 	}
 
 	/**
@@ -318,12 +333,14 @@ class PostmasterGeneral extends EventEmitter {
 	async stopConsuming(cancelReplies) {
 		this._shouldConsume = false;
 
+		this._logger.debug('Starting to cancel all consumers...');
+
 		this._resetHandlerTimings();
 
 		if (this._replyConsumerTag && cancelReplies) {
 			await this._channels.consumers[this._topology.queues.reply.name].cancel(this._replyConsumerTag);
 			this._replyConsumerTag = null;
-			this._logger.debug(`postmaster-general stopped consuming from queue ${this._topology.queues.reply.name}`);
+			this._logger.debug(`Stopped consuming from queue ${this._topology.queues.reply.name}...`);
 		}
 
 		await Promise.map(this._topology.bindings.keys(), async (key) => {
@@ -332,11 +349,11 @@ class PostmasterGeneral extends EventEmitter {
 			if (consumerTag) {
 				delete this._handlers[binding.topic].consumerTag;
 				await this._channels.consumers[binding.queue].cancel(consumerTag);
-				this._logger.debug(`postmaster-general stopped consuming from queue ${binding.queue}`);
+				this._logger.debug(`Stopped consuming from queue ${binding.queue}...`);
 			}
 		});
 
-		this._logger.info('postmaster-general stopped consuming from all queues!');
+		this._logger.debug('Finished consumer shutdown!');
 	}
 
 	/**
@@ -349,6 +366,8 @@ class PostmasterGeneral extends EventEmitter {
 	 */
 	async _ackMessageAndReply(queueName, msg, pattern, reply) {
 		try {
+			this._logger.debug(`Attempting to acknowledge message: ${pattern} messageId: ${msg.properties.messageId}`);
+
 			const topic = this._resolveTopic(pattern);
 			if (this._handlers[topic] && this._handlers[topic].outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
 				await this._channels.consumers[queueName].ack(msg);
@@ -365,10 +384,10 @@ class PostmasterGeneral extends EventEmitter {
 				}
 				this._handlers[topic].outstandingMessages.delete(`${pattern}_${msg.properties.messageId}`);
 			} else {
-				this._logger.warn(`postmaster-general skipping message ack due to connection failure! message: ${pattern} messageId: ${msg.properties.messageId}`);
+				this._logger.warn(`Skipping message ack due to connection failure! message: ${pattern} messageId: ${msg.properties.messageId}`);
 			}
 		} catch (err) {
-			this._logger.warn(`postmaster-general failed to ack a message! message: ${pattern} messageId: ${msg.properties.messageId} err: ${err.message}`);
+			this._logger.warn(`Failed to ack a message! message: ${pattern} messageId: ${msg.properties.messageId} err: ${err.message}`);
 		}
 	}
 
@@ -383,6 +402,8 @@ class PostmasterGeneral extends EventEmitter {
 	 */
 	async _nackMessageAndReply(queueName, msg, pattern, reply) {
 		try {
+			this._logger.debug(`Attempting to acknowledge message: ${pattern} messageId: ${msg.properties.messageId}`);
+
 			const topic = this._resolveTopic(pattern);
 			if (this._channels.consumers[queueName] && this._handlers[topic] && this._handlers[topic].outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
 				await this._channels.consumers[queueName].nack(msg, false, false);
@@ -399,10 +420,10 @@ class PostmasterGeneral extends EventEmitter {
 				}
 				this._handlers[topic].outstandingMessages.delete(`${pattern}_${msg.properties.messageId}`);
 			} else {
-				this._logger.warn(`postmaster-general skipping message nack due to connection failure! message: ${pattern} messageId: ${msg.properties.messageId}`);
+				this._logger.warn(`Skipping message nack due to connection failure! message: ${pattern} messageId: ${msg.properties.messageId}`);
 			}
 		} catch (err) {
-			this._logger.warn(`postmaster-general failed to nack a message! message: ${pattern} messageId: ${msg.properties.messageId} err: ${err.message}`);
+			this._logger.warn(`Failed to nack a message! message: ${pattern} messageId: ${msg.properties.messageId} err: ${err.message}`);
 		}
 	}
 
@@ -416,15 +437,17 @@ class PostmasterGeneral extends EventEmitter {
 	 */
 	async _rejectMessage(queueName, msg, pattern) {
 		try {
+			this._logger.debug(`Attempting to acknowledge message: ${pattern} messageId: ${msg.properties.messageId}`);
+
 			const topic = this._resolveTopic(pattern);
 			if (this._channels.consumers[queueName] && this._handlers[topic] && this._handlers[topic].outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
 				await this._channels.consumers[queueName].reject(msg);
 				this._handlers[topic].outstandingMessages.delete(`${pattern}_${msg.properties.messageId}`);
 			} else {
-				this._logger.warn(`postmaster-general skipping message rejection due to connection failure! message: ${pattern} messageId: ${msg.properties.messageId}`);
+				this._logger.warn(`Skipping message rejection due to connection failure! message: ${pattern} messageId: ${msg.properties.messageId}`);
 			}
 		} catch (err) {
-			this._logger.warn(`postmaster-general failed to reject a message! message: ${pattern} messageId: ${msg.properties.messageId} err: ${err.message}`);
+			this._logger.warn(`Failed to reject a message! message: ${pattern} messageId: ${msg.properties.messageId} err: ${err.message}`);
 		}
 	}
 
@@ -438,14 +461,16 @@ class PostmasterGeneral extends EventEmitter {
 			body = (msg.content || '{}').toString();
 			body = JSON.parse(body);
 		} catch (err) {
-			body.err = 'postmaster-general failed to parse message body due to invalid JSON!';
+			body.err = 'Failed to parse message body due to invalid JSON!';
 		}
 
 		msg.properties = msg.properties || {};
 		msg.properties.headers = msg.properties.headers || {};
 
+		this._logger.debug(`Attempting to handle incoming reply. correlationId: ${msg.properties.correlationId || 'undefined'}`);
+
 		if (!msg.properties.correlationId || !this._replyHandlers[msg.properties.correlationId] || msg.properties.replyTo !== this._topology.queues.reply.name) {
-			this._logger.warn(`postmaster-general reply handler received an invalid reply! correlationId: ${msg.properties.correlationId}`);
+			this._logger.warn(`Reply handler received an invalid reply! correlationId: ${msg.properties.correlationId}`);
 		} else {
 			if (body.err) {
 				this._replyHandlers[msg.properties.correlationId](new Error(body.err));
@@ -453,6 +478,7 @@ class PostmasterGeneral extends EventEmitter {
 				this._replyHandlers[msg.properties.correlationId](null, body);
 			}
 			delete this._replyHandlers[msg.properties.correlationId];
+			this._logger.debug(`Finished processing reply. correlationId: ${msg.properties.correlationId || 'undefined'}`);
 		}
 	}
 
@@ -462,6 +488,7 @@ class PostmasterGeneral extends EventEmitter {
 	 * @param {Date} start The time at which the handler started execution.
 	 */
 	_setHandlerTiming(pattern, start) {
+		this._logger.debug(`Setting handler timings for message: ${pattern}`);
 		const elapsed = new Date().getTime() - start;
 		this._handlers[pattern].timings = this._handlers[pattern].timings || {
 			messageCount: 0,
@@ -485,12 +512,14 @@ class PostmasterGeneral extends EventEmitter {
 	 * Resets the handler timings to prevent unbounded accumulation of stale data.
 	 */
 	_resetHandlerTimings() {
+		this._logger.debug('Resetting handler timings.');
 		for (const key of this._handlers.keys()) {
 			delete this._handlers[key].timings;
 		}
 
 		// If we're not manually managing the timing refresh, schedule the next timeout.
 		if (this._handlerTimingResetInterval) {
+			this._logger.debug(`Setting next timing refresh in ${this._handlerTimingResetInterval} ms.`);
 			this._handlerTimingsTimeout = setTimeout(() => {
 				this._resetHandlerTimings();
 			}, this._handlerTimingResetInterval);
@@ -505,6 +534,7 @@ class PostmasterGeneral extends EventEmitter {
 	 * @returns {Promise} A promise that resolves when the listener has been added.
 	 */
 	async addListener(pattern, callback, options) {
+		this._logger.debug(`Starting to add a listener for message: ${pattern}...`);
 		options = options || {};
 
 		// Configure queue options.
@@ -519,6 +549,7 @@ class PostmasterGeneral extends EventEmitter {
 		options.exchange = options.exchange || this._defaultExchange;
 
 		// Grab a channel and assert the topology.
+		this._logger.debug(`Asserting listener topology for message: ${pattern}...`);
 		if (!this._channels.consumers[queueName]) {
 			this._channels.consumers[queueName] = await this._createChannel();
 		}
@@ -536,6 +567,8 @@ class PostmasterGeneral extends EventEmitter {
 				msg.properties.headers = msg.properties.headers || {};
 				msg.properties.messageId = msg.properties.messageId || msg.properties.correlationId;
 
+				this._logger.debug(`Handling incoming message: ${pattern} messageId: ${msg.properties.messageId}...`);
+
 				this._handlers[topic].outstandingMessages.add(`${pattern}_${msg.properties.messageId}`);
 
 				let body = (msg.content || '{}').toString();
@@ -544,12 +577,15 @@ class PostmasterGeneral extends EventEmitter {
 				const reply = await callback(body);
 				await this._ackMessageAndReply(queueName, msg, pattern, reply);
 				this._setHandlerTiming(pattern, start);
+				this._logger.debug(`Finished handling incoming message: ${pattern} messageId: ${msg.properties.messageId}.`);
 			} catch (err) {
-				this._logger.error(`postmaster-general message handler failed and cannot retry! message: ${pattern} err: ${err.message}`);
+				this._logger.error(`Message handler failed and cannot retry! message: ${pattern} messageId: ${msg.properties.messageId} err: ${err.message}`);
 				await this._nackMessageAndReply(queueName, msg, pattern, err.message);
 				this._setHandlerTiming(pattern, start);
 			}
 		};
+
+		this._logger.debug(`Finished adding a listener for message: ${pattern}.`);
 	}
 
 	/**
@@ -570,13 +606,17 @@ class PostmasterGeneral extends EventEmitter {
 		const attempt = async () => {
 			attempts++;
 
+			this._logger.debug(`Attempting to remove a listener for message: ${pattern}...`);
+
 			if (this._connecting) {
+				this._logger.debug(`Cannot remove a listener for message: ${pattern} while reconnecting! Will retry in ${this._removeListenerRetryDelay} ms...`);
 				await Promise.delay(this._removeListenerRetryDelay);
 				return attempt();
 			}
 
 			try {
 				if (this._channels.consumers[queueName]) {
+					this._logger.debug(`Cancelling consumer for message: ${pattern}...`);
 					if (this._handlers[topic].consumerTag) {
 						await this._channels.consumers[queueName].cancel(this._handlers[topic].consumerTag);
 					}
@@ -586,6 +626,7 @@ class PostmasterGeneral extends EventEmitter {
 				}
 				delete this._handlers[topic];
 				delete this._topology.bindings[`${queueName}_${exchange}`];
+				this._logger.debug(`Finished removing listener for message: ${pattern}.`);
 			} catch (err) {
 				if (attempts < this._removeListenerRetryLimit) {
 					await Promise.delay(this._removeListenerRetryDelay);
@@ -616,14 +657,17 @@ class PostmasterGeneral extends EventEmitter {
 		options.timestamp = new Date().getTime();
 
 		const exchange = options.exchange || this._defaultExchange.name;
-		const msgData = Buffer.from(JSON.stringify(message || '{}'));
+		const msgBody = JSON.stringify(message || '{}');
+		const msgData = Buffer.from(msgBody);
 
 		const attempt = async (skipIncrement) => {
+			this._logger.debug(`Attempting to publish fire-and-forget message: ${routingKey}...`);
 			if (!skipIncrement) {
 				publishAttempts++;
 			}
 
 			if (this._connecting) {
+				this._logger.debug(`Unable to publish fire-and-forget message: ${routingKey} while reconnecting. Will retry...`);
 				await Promise.delay(this._publishRetryDelay);
 				return attempt(true);
 			}
@@ -633,10 +677,11 @@ class PostmasterGeneral extends EventEmitter {
 				if (published) {
 					publishAttempts = 0;
 				} else {
-					throw new Error(`postmaster-general failed publishing message due to full publish buffer and may retry! message: ${routingKey}`);
+					throw new Error(`Publish buffer full!`);
 				}
 			} catch (err) {
 				if (publishAttempts < this._publishRetryLimit) {
+					this._logger.debug(`Failed to publish fire-and-forget message: ${routingKey} err: ${err.message} will retry...`);
 					await Promise.delay(this._publishRetryDelay);
 					return attempt();
 				}
@@ -647,7 +692,7 @@ class PostmasterGeneral extends EventEmitter {
 		try {
 			await attempt();
 		} catch (err) {
-			this._logger.error(`postmaster-general failed to publish a fire-and-forget message! message: ${routingKey} err: ${err.message}`);
+			this._logger.error(`Failed to publish a fire-and-forget message! message: ${routingKey} err: ${err.message}`);
 		}
 	}
 
@@ -674,11 +719,13 @@ class PostmasterGeneral extends EventEmitter {
 		const msgData = Buffer.from(JSON.stringify(message || '{}'));
 
 		const attempt = async (skipIncrement) => {
+			this._logger.debug(`Attempting to publish RPC message: ${routingKey}...`);
 			if (!skipIncrement) {
 				publishAttempts++;
 			}
 
 			if (this._connecting) {
+				this._logger.debug(`Unable to publish RPC message: ${routingKey} while reconnecting. Will retry...`);
 				await Promise.delay(this._publishRetryDelay);
 				return attempt();
 			}
@@ -688,7 +735,7 @@ class PostmasterGeneral extends EventEmitter {
 				if (published) {
 					publishAttempts = 0;
 				} else {
-					throw new Error(`postmaster-general failed publishing message due to full publish buffer and may retry! message: ${routingKey}`);
+					throw new Error(`Publish buffer full!`);
 				}
 
 				return new Promise((resolve, reject) => {
@@ -702,9 +749,11 @@ class PostmasterGeneral extends EventEmitter {
 				}).timeout(this._replyTimeout);
 			} catch (err) {
 				if (publishAttempts < this._publishRetryLimit) {
+					this._logger.debug(`Failed to publish RPC message: ${routingKey} err: ${err.message} will retry...`);
 					await Promise.delay(this._publishRetryDelay);
 					return attempt();
 				}
+				this._logger.debug(`Failed to publish RPC message: ${routingKey} err: ${err.message}`);
 				throw err;
 			}
 		};
