@@ -50,7 +50,7 @@ class PostmasterGeneral extends EventEmitter {
 		this._replyTimeout = this._publishRetryDelay * this._publishRetryLimit * 2;
 		this._queuePrefix = options.queuePrefix || defaults.queuePrefix;
 		this._shutdownTimeout = options.shutdownTimeout || defaults.shutdownTimeout;
-		this._url = typeof options.url || defaults.url;
+		this._url = options.url || defaults.url;
 
 		// Configure the logger.
 		this._logger = log4js.getLogger('postmaster-general');
@@ -67,11 +67,11 @@ class PostmasterGeneral extends EventEmitter {
 	 * Accessor property for retrieving the number of messages being handled, subscribed and replies.
 	 */
 	get outstandingMessageCount() {
-		const listenerCount = this._handlers.keys().reduce((sum, key) => {
+		const listenerCount = Object.keys(this._handlers).reduce((sum, key) => {
 			return sum + this._handlers[key].outstandingMessages.size();
 		});
 
-		return listenerCount + this._replyHandlers.keys().length;
+		return listenerCount + Object.keys(this._replyHandlers).length;
 	}
 
 	/**
@@ -79,7 +79,7 @@ class PostmasterGeneral extends EventEmitter {
 	 */
 	get handlerTimings() {
 		const handlerTimings = {};
-		for (const key of this._handlers.keys()) {
+		for (const key of Object.keys(this._handlers)) {
 			const handler = this._handlers[key];
 			if (handler.timings) {
 				handlerTimings[key] = handler.timings;
@@ -114,7 +114,7 @@ class PostmasterGeneral extends EventEmitter {
 			try {
 				this._logger.debug('Closing any existing connections...');
 				this._replyConsumerTag = null;
-				for (const key of this._handlers.keys()) {
+				for (const key of Object.keys(this._handlers)) {
 					delete this._handlers[key].consumerTag;
 					if (this._handlers[key].outstandingMessages) {
 						this._handlers[key].outstandingMessages.clear();
@@ -157,7 +157,7 @@ class PostmasterGeneral extends EventEmitter {
 					publish: this._createChannel(),
 					replyPublish: this._createChannel(),
 					topology: this._createChannel(),
-					consumers: Promise.reduce(this._topology.queues.keys(), async (consumerMap, key) => {
+					consumers: Promise.reduce(Object.keys(this._topology.queues), async (consumerMap, key) => {
 						const queue = this._topology.queues[key];
 						consumerMap[queue.name] = await this._createChannel();
 					})
@@ -267,14 +267,14 @@ class PostmasterGeneral extends EventEmitter {
 		this._logger.debug('Asserting pre-defined topology...');
 
 		// Assert exchanges.
-		for (const key of this._topology.exchanges.keys()) {
+		for (const key of Object.keys(this._topology.exchanges)) {
 			const exchange = this._topology.exchanges[key];
 			this._logger.debug(`Asserting exchange name: ${exchange.name} type: ${exchange.type} options: ${JSON.stringify(exchange.options)}...`);
 			topologyPromises.push(this._channels.topology.assertExchange(exchange.name, exchange.type, exchange.options));
 		}
 
 		// Assert consumer queues.
-		for (const key of this._topology.queues.keys()) {
+		for (const key of Object.keys(this._topology.queues)) {
 			const queue = this._topology.queues[key];
 			this._logger.debug(`Asserting queue name: ${queue.name} options: ${JSON.stringify(queue.options)}...`);
 			topologyPromises.push(this._channels.topology.assertQueue(queue.name, queue.options));
@@ -284,7 +284,7 @@ class PostmasterGeneral extends EventEmitter {
 		await Promise.all(topologyPromises);
 
 		// Bind listeners.
-		await Promise.map(this._topology.bindings.keys(), (key) => {
+		await Promise.map(Object.keys(this._topology.bindings), (key) => {
 			const binding = this._topology.bindings[key];
 			this._logger.debug(`Asserting binding queue: ${binding.queue} exchange: ${binding.exchange} topic: ${binding.topic} options: ${JSON.stringify(binding.options)}...`);
 			return this._channels.topology.bindQueue(binding.queue, binding.exchange, binding.topic, binding.options);
@@ -311,7 +311,7 @@ class PostmasterGeneral extends EventEmitter {
 			this._logger.debug(`Starting consuming from reply queue: ${replyQueue.name}...`);
 		}
 
-		await Promise.map(this._topology.bindings.keys(), async (key) => {
+		await Promise.map(Object.keys(this._topology.bindings), async (key) => {
 			const binding = this._topology.bindings[key];
 			const consumerTag = await this._channels.consumers[binding.queue].consume(binding.queue, this._handlers[binding.topic].callback, binding.options);
 			this._handlers[binding.topic].consumerTag = consumerTag;
@@ -339,7 +339,7 @@ class PostmasterGeneral extends EventEmitter {
 			this._logger.debug(`Stopped consuming from queue ${this._topology.queues.reply.name}...`);
 		}
 
-		await Promise.map(this._topology.bindings.keys(), async (key) => {
+		await Promise.map(Object.keys(this._topology.bindings), async (key) => {
 			const binding = this._topology.bindings[key];
 			const consumerTag = JSON.parse(JSON.stringify(this._handlers[binding.topic].consumerTag));
 			if (consumerTag) {
@@ -509,7 +509,7 @@ class PostmasterGeneral extends EventEmitter {
 	 */
 	_resetHandlerTimings() {
 		this._logger.debug('Resetting handler timings.');
-		for (const key of this._handlers.keys()) {
+		for (const key of Object.keys(this._handlers)) {
 			delete this._handlers[key].timings;
 		}
 

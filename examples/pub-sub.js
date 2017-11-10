@@ -1,18 +1,19 @@
 ﻿'use strict';
 
-const PostmasterGeneral = require('../postmaster-general');
+const PostmasterGeneral = require('../index');
 
-const postmaster = new PostmasterGeneral('pub-sub');
+const postmaster = new PostmasterGeneral({ logLevel: 'debug' });
+
+const printGreeting = async (message) => {
+	console.log('[action:get_greeting] received');
+	return { greeting: 'Hello, ' + message.name };
+};
 
 // Start the Postmaster instance.
-postmaster.addListener('action:get_greeting', (message, done) => {
-	console.log('[action:get_greeting] received');
-	return done(null, {
-		greeting: 'Hello, ' + message.name
-	});
-})
+postmaster.connect()
+	.then(() => postmaster.addListener('action:get_greeting', printGreeting))
 	// Add a listener callback.
-	.then(() => postmaster.start())
+	.then(() => postmaster.startConsuming())
 	// Publish a fire-and-forget message.
 	.then(() => postmaster.publish('action:get_greeting', { name: 'Bob' }))
 	// Publish a message with a callback.
@@ -20,4 +21,6 @@ postmaster.addListener('action:get_greeting', (message, done) => {
 	// Handle the callback.
 	.then((res) => {
 		console.log(res.greeting);
-	});
+	})
+	// Shut everything down.
+	.then(() => postmaster.shutdown());
