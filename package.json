@@ -27,9 +27,9 @@
     "coverage": "nyc report --reporter=text-lcov | coveralls"
   },
   "dependencies": {
-    "amqplib": "^0.5.1",
+    "amqplib": "^0.5.2",
     "bluebird": "^3.5.0",
-    "log4js": "^2.3.10",
+    "log4js": "^2.3.12",
     "uuid": "^3.1.0"
   },
   "devDependencies": {
@@ -38,8 +38,8 @@
     "dirty-chai": "^2.0.1",
     "glob": "^7.1.2",
     "mocha": "^4.0.1",
-    "nyc": "^11.2.1",
-    "sinon": "^4.0.2",
+    "nyc": "^11.3.0",
+    "sinon": "^4.1.2",
     "why-is-node-running": "^1.2.3",
     "xo": "^0.18.2"
   },

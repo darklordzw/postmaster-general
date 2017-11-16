@@ -381,7 +381,7 @@ class PostmasterGeneral extends EventEmitter {
 
 			const topic = this._resolveTopic(pattern);
 			if (this._handlers[topic] && this._handlers[topic].outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
-				await this._channels.consumers[queueName].ack(msg);
+				this._channels.consumers[queueName].ack(msg);
 				if (msg.properties.replyTo && msg.properties.correlationId) {
 					reply = reply || {};
 					const options = {
@@ -392,7 +392,7 @@ class PostmasterGeneral extends EventEmitter {
 						timestamp: new Date().getTime(),
 						replyTo: msg.properties.replyTo
 					};
-					await this._channels.replyPublish.sendToQueue(msg.properties.replyTo, Buffer.from(JSON.stringify(reply)), options);
+					this._channels.replyPublish.sendToQueue(msg.properties.replyTo, Buffer.from(JSON.stringify(reply)), options);
 				}
 				this._handlers[topic].outstandingMessages.delete(`${pattern}_${msg.properties.messageId}`);
 			} else {
@@ -418,7 +418,7 @@ class PostmasterGeneral extends EventEmitter {
 
 			const topic = this._resolveTopic(pattern);
 			if (this._channels.consumers[queueName] && this._handlers[topic] && this._handlers[topic].outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
-				await this._channels.consumers[queueName].nack(msg, false, false);
+				this._channels.consumers[queueName].nack(msg, false, false);
 				if (msg.properties.replyTo && msg.properties.correlationId) {
 					reply = reply || 'An unknown error occurred during processing!';
 					const options = {
@@ -429,7 +429,7 @@ class PostmasterGeneral extends EventEmitter {
 						timestamp: new Date().getTime(),
 						replyTo: msg.properties.replyTo
 					};
-					await this._channels.replyPublish.sendToQueue(msg.properties.replyTo, Buffer.from(JSON.stringify({ err: reply })), options);
+					this._channels.replyPublish.sendToQueue(msg.properties.replyTo, Buffer.from(JSON.stringify({ err: reply })), options);
 				}
 				this._handlers[topic].outstandingMessages.delete(`${pattern}_${msg.properties.messageId}`);
 			} else {
@@ -454,7 +454,7 @@ class PostmasterGeneral extends EventEmitter {
 
 			const topic = this._resolveTopic(pattern);
 			if (this._channels.consumers[queueName] && this._handlers[topic] && this._handlers[topic].outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
-				await this._channels.consumers[queueName].reject(msg);
+				this._channels.consumers[queueName].reject(msg);
 				this._handlers[topic].outstandingMessages.delete(`${pattern}_${msg.properties.messageId}`);
 			} else {
 				this._logger.warn(`Skipping message rejection due to connection failure! message: ${pattern} messageId: ${msg.properties.messageId}`);
@@ -693,7 +693,7 @@ class PostmasterGeneral extends EventEmitter {
 				}
 
 				try {
-					const published = await this._channels.publish.publish(exchange, this._resolveTopic(routingKey), msgData, options);
+					const published = this._channels.publish.publish(exchange, this._resolveTopic(routingKey), msgData, options);
 					if (published) {
 						publishAttempts = 0;
 					} else {
@@ -750,7 +750,7 @@ class PostmasterGeneral extends EventEmitter {
 			}
 
 			try {
-				const published = await this._channels.publish.publish(exchange, this._resolveTopic(routingKey), msgData, options);
+				const published = this._channels.publish.publish(exchange, this._resolveTopic(routingKey), msgData, options);
 				if (published) {
 					publishAttempts = 0;
 				} else {
