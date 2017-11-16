@@ -23,7 +23,7 @@
     "defaults.json"
   ],
   "scripts": {
-    "test": "nyc --reporter=html --reporter=text mocha",
+    "test": "nyc --reporter=html --reporter=text mocha --exit",
     "coverage": "nyc report --reporter=text-lcov | coveralls"
   },
   "dependencies": {
