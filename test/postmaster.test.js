@@ -6,6 +6,7 @@ const chai = require('chai');
 const dirtyChai = require('dirty-chai');
 const sinon = require('sinon');
 const uuidv4 = require('uuid/v4');
+const Promise = require('bluebird');
 const PostmasterGeneral = require('../index');
 const defaults = require('../defaults.json');
 
@@ -110,6 +111,93 @@ describe('handlerTimings:', () => {
 		postmaster._handlers.test = { timings: { dummyKey: 'dummyValue' } };
 		Object.keys(postmaster.handlerTimings).length.should.equal(1);
 	});
+});
+
+describe('connect:', () => {
+	let postmaster;
+
+	beforeEach(() => {
+		postmaster = new PostmasterGeneral({ logLevel: 'off' });
+	});
+
+	afterEach(async () => {
+		try {
+			if (postmaster._connection) {
+				postmaster.shutdown();
+			}
+		} catch (err) {}
+	});
+
+	it('should resolve when successfully connected', async () => {
+		await postmaster.connect();
+		expect(postmaster._connection).to.not.be.null();
+		await postmaster._channels.topology.checkExchange(postmaster._defaultExchange.name);
+	});
+
+	it('should reject if unable to connect', async () => {
+		postmaster._url = 'bad url';
+		try {
+			await postmaster.connect();
+		} catch (err) {
+			return;
+		}
+		throw new Error('connect() failed to reject when unable to connect!');
+	}).timeout(5000);
+
+	it('should set the _createChannel function', async () => {
+		expect(postmaster._createChannel).to.not.exist();
+		await postmaster.connect();
+		expect(postmaster._createChannel).to.exist();
+	});
+
+	it('should properly create all channels', async () => {
+		postmaster._channels.should.be.empty();
+		await postmaster.connect();
+		postmaster._channels.should.not.be.empty();
+		expect(postmaster._channels.publish).to.exist();
+		expect(postmaster._channels.replyPublish).to.exist();
+		expect(postmaster._channels.topology).to.exist();
+		expect(postmaster._channels.consumers).to.exist();
+		expect(postmaster._channels.consumers[postmaster._topology.queues.reply.name]).to.exist();
+	});
+
+	it('should try to assert topology', async () => {
+		const spy = sinon.spy(postmaster._assertTopology);
+		await postmaster.connect();
+		spy.should.have.been.calledOnce; // eslint-disable-line no-unused-expressions
+	});
+
+	it('should close existing connections before reconnecting', async () => {
+		await postmaster.connect();
+		const spy = sinon.spy(postmaster._connection.close);
+		await postmaster.connect();
+		spy.should.have.been.calledOnce; // eslint-disable-line no-unused-expressions
+	});
+
+	it('should reconnect if the connection is lost due to channel error', async () => {
+		await postmaster.connect();
+		try {
+			await postmaster._channels.topology.checkExchange('invalid exchange');
+		} catch (err) {}
+		await Promise.delay(1000);
+		expect(postmaster._connection).to.not.be.null();
+		await postmaster._channels.topology.checkExchange(postmaster._defaultExchange.name);
+	}).timeout(5000);
+
+	it('should emit an error event if the connection is lost and cannot be recovered', async () => {
+		await postmaster.connect();
+		postmaster._url = 'bad url';
+		const onError = (err) => {
+			expect(err.message).to.exist();
+		};
+		const spy = sinon.spy(onError);
+		postmaster.on('error', onError);
+		try {
+			await postmaster._channels.topology.checkExchange('invalid exchange');
+		} catch (err) {}
+		await Promise.delay(3000);
+		spy.should.have.been.calledOnce; // eslint-disable-line no-unused-expressions
+	}).timeout(5000);
 });
 
 // describe('publisher functions:', () => {
