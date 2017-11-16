@@ -95,6 +95,23 @@ describe('outstandingMessageCount:', () => {
 	});
 });
 
+describe('handlerTimings:', () => {
+	let postmaster;
+
+	beforeEach(() => {
+		postmaster = new PostmasterGeneral({ logLevel: 'off' });
+	});
+
+	it('should return an empty object if there are no timings', () => {
+		postmaster.handlerTimings.should.be.empty();
+	});
+
+	it('should return proper timings if set', () => {
+		postmaster._handlers.test = { timings: { dummyKey: 'dummyValue' } };
+		Object.keys(postmaster.handlerTimings).length.should.equal(1);
+	});
+});
+
 // describe('publisher functions:', () => {
 // 	let postmaster;
 // 	let sandbox;
