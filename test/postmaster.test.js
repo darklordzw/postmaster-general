@@ -116,13 +116,13 @@ describe('connect:', () => {
 	let postmaster;
 
 	beforeEach(() => {
-		postmaster = new PostmasterGeneral({ logLevel: 'off' });
+		postmaster = new PostmasterGeneral({ logLevel: 'off', shutdownTimeout: 1000 });
 	});
 
 	afterEach(async () => {
 		try {
 			if (postmaster._connection) {
-				postmaster.shutdown();
+				await postmaster.shutdown();
 			}
 		} catch (err) {}
 	});
@@ -209,7 +209,7 @@ describe('shutdown:', () => {
 	afterEach(async () => {
 		try {
 			if (postmaster._connection) {
-				postmaster.shutdown();
+				await postmaster.shutdown();
 			}
 		} catch (err) {}
 	});
@@ -269,7 +269,7 @@ describe('assertExchange:', () => {
 	afterEach(async () => {
 		try {
 			if (postmaster._connection) {
-				postmaster.shutdown();
+				await postmaster.shutdown();
 			}
 		} catch (err) {}
 	});
@@ -292,7 +292,7 @@ describe('assertQueue:', () => {
 	afterEach(async () => {
 		try {
 			if (postmaster._connection) {
-				postmaster.shutdown();
+				await postmaster.shutdown();
 			}
 		} catch (err) {}
 	});
@@ -315,7 +315,7 @@ describe('assertBinding:', () => {
 	afterEach(async () => {
 		try {
 			if (postmaster._connection) {
-				postmaster.shutdown();
+				await postmaster.shutdown();
 			}
 		} catch (err) {}
 	});
@@ -338,7 +338,7 @@ describe('assertTopology:', () => {
 	afterEach(async () => {
 		try {
 			if (postmaster._connection) {
-				postmaster.shutdown();
+				await postmaster.shutdown();
 			}
 		} catch (err) {}
 	});
@@ -377,7 +377,7 @@ describe('startConsuming:', () => {
 	afterEach(async () => {
 		try {
 			if (postmaster._connection) {
-				postmaster.shutdown();
+				await postmaster.shutdown();
 			}
 		} catch (err) {}
 	});
@@ -421,7 +421,7 @@ describe('stopConsuming:', () => {
 	afterEach(async () => {
 		try {
 			if (postmaster._connection) {
-				postmaster.shutdown();
+				await postmaster.shutdown();
 			}
 		} catch (err) {}
 	});
