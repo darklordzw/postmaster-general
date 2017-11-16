@@ -21,6 +21,6 @@
 	"queuePrefix": "postmaster.queue",
 	"removeListenerRetryDelay": 1000,
 	"removeListenerRetryLimit": 3,
-	"shutdownTimout": 30000,
+	"shutdownTimeout": 30000,
 	"url": "amqp://guest:guest@localhost:5672"
 }

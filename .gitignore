@@ -15,6 +15,12 @@ lib-cov
 # Coverage directory used by tools like istanbul
 coverage
 
+# New-style istanbul output
+.nyc_output
+
+# Mocha test results
+test-results
+
 # Grunt intermediate storage (http://gruntjs.com/creating-plugins#storing-task-files)
 .grunt
 
