@@ -329,6 +329,45 @@ describe('assertBinding:', () => {
 	});
 });
 
+describe('assertTopology:', () => {
+	let postmaster;
+
+	beforeEach(() => {
+		postmaster = new PostmasterGeneral({ logLevel: 'off' });
+	});
+
+	afterEach(async () => {
+		try {
+			if (postmaster._connection) {
+				postmaster.shutdown();
+			}
+		} catch (err) {}
+	});
+
+	it('should assert predefined exchanges', async () => {
+		postmaster._topology.exchanges.atExchange = { name: 'atExchange' };
+		const spy = sinon.spy(postmaster.assertExchange);
+		await postmaster.connect();
+		spy.should.have.been.called; // eslint-disable-line no-unused-expressions
+		await postmaster._channels.topology.checkExchange('atExchange');
+	});
+
+	it('should assert predefined queues', async () => {
+		postmaster._topology.queues.atQueue = { name: 'atQueue' };
+		const spy = sinon.spy(postmaster.assertQueue);
+		await postmaster.connect();
+		spy.should.have.been.called; // eslint-disable-line no-unused-expressions
+		await postmaster._channels.topology.checkQueue('atQueue');
+	});
+
+	it('should assert predefined bindings', async () => {
+		postmaster._topology.bindings.atQueue_atExchange = { queue: 'atQueue', exchange: 'atExchange', topic: 'atTestTopic' }; // eslint-disable-line camelcase
+		const spy = sinon.spy(postmaster.assertBinding);
+		await postmaster.connect();
+		spy.should.have.been.called; // eslint-disable-line no-unused-expressions
+	});
+});
+
 // describe('publisher functions:', () => {
 // 	let postmaster;
 // 	let sandbox;
