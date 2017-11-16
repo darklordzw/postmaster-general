@@ -368,6 +368,97 @@ describe('assertTopology:', () => {
 	});
 });
 
+describe('startConsuming:', () => {
+	let postmaster;
+
+	beforeEach(() => {
+		postmaster = new PostmasterGeneral({ logLevel: 'off' });
+	});
+
+	afterEach(async () => {
+		try {
+			if (postmaster._connection) {
+				postmaster.shutdown();
+			}
+		} catch (err) {}
+	});
+
+	it('should reset handler timings', async () => {
+		await postmaster.connect();
+		const spy = sinon.spy(postmaster._resetHandlerTimings);
+		await postmaster.startConsuming();
+		spy.should.have.been.called; // eslint-disable-line no-unused-expressions
+	});
+
+	it('should start consuming on the reply queue', async () => {
+		await postmaster.connect();
+		const spy = sinon.spy(postmaster._channels.consumers[postmaster._topology.queues.reply.name].consume);
+		expect(postmaster._replyConsumerTag).to.not.exist();
+		await postmaster.startConsuming();
+		spy.should.have.been.called; // eslint-disable-line no-unused-expressions
+		expect(postmaster._replyConsumerTag).to.exist();
+	});
+
+	it('should start consuming on the listener queues', async () => {
+		await postmaster.connect();
+		await postmaster.addListener('sctest', () => {
+			return Promise.resolve();
+		});
+		const spy = sinon.spy(postmaster._channels.consumers['postmaster.queue.sctest'].consume);
+		expect(postmaster._handlers.sctest.consumerTag).to.not.exist();
+		await postmaster.startConsuming();
+		spy.should.have.been.called; // eslint-disable-line no-unused-expressions
+		expect(postmaster._handlers.sctest.consumerTag).to.exist();
+	});
+});
+
+describe('stopConsuming:', () => {
+	let postmaster;
+
+	beforeEach(() => {
+		postmaster = new PostmasterGeneral({ logLevel: 'off' });
+	});
+
+	afterEach(async () => {
+		try {
+			if (postmaster._connection) {
+				postmaster.shutdown();
+			}
+		} catch (err) {}
+	});
+
+	it('should reset handler timings', async () => {
+		await postmaster.connect();
+		await postmaster.startConsuming();
+		const spy = sinon.spy(postmaster._resetHandlerTimings);
+		await postmaster.stopConsuming();
+		spy.should.have.been.called; // eslint-disable-line no-unused-expressions
+	});
+
+	it('should stop consuming on the reply queue', async () => {
+		await postmaster.connect();
+		await postmaster.startConsuming();
+		const spy = sinon.spy(postmaster._channels.consumers[postmaster._topology.queues.reply.name].cancel);
+		expect(postmaster._replyConsumerTag).to.exist();
+		await postmaster.stopConsuming();
+		spy.should.have.been.called; // eslint-disable-line no-unused-expressions
+		expect(postmaster._replyConsumerTag).to.not.exist();
+	});
+
+	it('should stop consuming on the listener queues', async () => {
+		await postmaster.connect();
+		await postmaster.addListener('sctest', () => {
+			return Promise.resolve();
+		});
+		await postmaster.startConsuming();
+		const spy = sinon.spy(postmaster._channels.consumers['postmaster.queue.sctest'].cancel);
+		expect(postmaster._handlers.sctest.consumerTag).to.exist();
+		await postmaster.stopConsuming();
+		spy.should.have.been.called; // eslint-disable-line no-unused-expressions
+		expect(postmaster._handlers.sctest.consumerTag).to.not.exist();
+	});
+});
+
 // describe('publisher functions:', () => {
 // 	let postmaster;
 // 	let sandbox;

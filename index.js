@@ -219,7 +219,7 @@ class PostmasterGeneral extends EventEmitter {
 		};
 
 		try {
-			await this.stopConsuming();
+			await this.stopConsuming(true);
 		} catch (err) {}
 
 		return attempt();
@@ -318,13 +318,14 @@ class PostmasterGeneral extends EventEmitter {
 		if (this._topology.queues.reply) {
 			const replyQueue = this._topology.queues.reply;
 			this._replyConsumerTag = await this._channels.consumers[replyQueue.name].consume(replyQueue.name, this._handleReply.bind(this), replyQueue.options);
+			this._replyConsumerTag = this._replyConsumerTag.consumerTag;
 			this._logger.debug(`Starting consuming from reply queue: ${replyQueue.name}...`);
 		}
 
 		await Promise.map(Object.keys(this._topology.bindings), async (key) => {
 			const binding = this._topology.bindings[key];
 			const consumerTag = await this._channels.consumers[binding.queue].consume(binding.queue, this._handlers[binding.topic].callback.bind(this), binding.options);
-			this._handlers[binding.topic].consumerTag = consumerTag;
+			this._handlers[binding.topic].consumerTag = consumerTag.consumerTag;
 			this._logger.debug(`Starting consuming from queue: ${binding.queue}...`);
 		});
 
@@ -333,17 +334,17 @@ class PostmasterGeneral extends EventEmitter {
 
 	/**
 	 * Called to stop consuming incoming messages from all channels.
-	 * @param {Boolean} [cancelReplies] If truthy, this function will stop consuming from the reply channel as well as the bound listeners. Defaults to false.
+	 * @param {Boolean} [awaitReplies] If truthy, this function will skip cancelling the reply consumer.
 	 * @returns {Promise} Promise that resolves when all consumers have stopped consuming.
 	 */
-	async stopConsuming(cancelReplies) {
+	async stopConsuming(awaitReplies) {
 		this._shouldConsume = false;
 
 		this._logger.debug('Starting to cancel all consumers...');
 
 		this._resetHandlerTimings();
 
-		if (this._replyConsumerTag && cancelReplies) {
+		if (this._replyConsumerTag && !awaitReplies) {
 			await this._channels.consumers[this._topology.queues.reply.name].cancel(this._replyConsumerTag);
 			this._replyConsumerTag = null;
 			this._logger.debug(`Stopped consuming from queue ${this._topology.queues.reply.name}...`);
