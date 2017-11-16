@@ -457,3 +457,101 @@ describe('stopConsuming:', () => {
 		expect(postmaster._handlers.sctest.consumerTag).to.not.exist();
 	});
 });
+
+describe('publish:', () => {
+	let postmaster;
+
+	beforeEach(() => {
+		postmaster = new PostmasterGeneral({ logLevel: 'off' });
+	});
+
+	afterEach(async () => {
+		try {
+			if (postmaster._connection) {
+				await postmaster.shutdown();
+			}
+		} catch (err) {}
+	});
+
+	it('should send a fire-and-forget message', async () => {
+		await postmaster.connect();
+		let received = false;
+		await postmaster.addListener('pubtest', (msg) => {
+			if (msg.data === 'test') {
+				received = true;
+			}
+			return Promise.resolve();
+		});
+		await postmaster.startConsuming();
+		received.should.be.false();
+		await postmaster.publish('pubtest', { data: 'test' });
+		await Promise.delay(100);
+		received.should.be.true();
+	});
+
+	it('should resolve even if connection is down', async () => {
+		await postmaster.publish('pubtest', { data: 'test' });
+	}).timeout(5000);
+
+	it('should hold messages until connection is established', async () => {
+		postmaster._connecting = true;
+		const pubPromise = postmaster.publish('pubtest', { data: 'test' });
+		await postmaster.connect();
+		let received = false;
+		await postmaster.addListener('pubtest', (msg) => {
+			if (msg.data === 'test') {
+				received = true;
+			}
+			return Promise.resolve();
+		});
+		await postmaster.startConsuming();
+		received.should.be.false();
+		await pubPromise;
+		await Promise.delay(100);
+		received.should.be.true();
+	});
+});
+
+describe('request:', () => {
+	let postmaster;
+
+	beforeEach(() => {
+		postmaster = new PostmasterGeneral({ logLevel: 'off' });
+	});
+
+	afterEach(async () => {
+		try {
+			if (postmaster._connection) {
+				await postmaster.shutdown();
+			}
+		} catch (err) {}
+	});
+
+	it('should send an RPC message', async () => {
+		await postmaster.connect();
+		await postmaster.addListener('pubtest', async (msg) => {
+			if (msg.data === 'test') {
+				return true;
+			}
+			return false;
+		});
+		await postmaster.startConsuming();
+		const received = await postmaster.request('pubtest', { data: 'test' });
+		received.should.be.true();
+	});
+
+	it('should hold messages until connection is established', async () => {
+		postmaster._connecting = true;
+		const pubPromise = postmaster.request('pubtest', { data: 'test' });
+		await postmaster.connect();
+		await postmaster.addListener('pubtest', async (msg) => {
+			if (msg.data === 'test') {
+				return true;
+			}
+			return false;
+		});
+		await postmaster.startConsuming();
+		const received = await pubPromise;
+		received.should.be.true();
+	});
+});

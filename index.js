@@ -469,6 +469,8 @@ class PostmasterGeneral extends EventEmitter {
 	 * @param {Object} msg The RabbitMQ message.
 	 */
 	_handleReply(msg) {
+		msg = msg || {};
+
 		let body;
 		try {
 			body = (msg.content || '{}').toString();
