@@ -260,6 +260,75 @@ describe('shutdown:', () => {
 	}).timeout(5000);
 });
 
+describe('assertExchange:', () => {
+	let postmaster;
+
+	beforeEach(() => {
+		postmaster = new PostmasterGeneral({ logLevel: 'off' });
+	});
+
+	afterEach(async () => {
+		try {
+			if (postmaster._connection) {
+				postmaster.shutdown();
+			}
+		} catch (err) {}
+	});
+
+	it('should assert the exchange and store the topology entry', async () => {
+		await postmaster.connect();
+		expect(postmaster._topology.exchanges.aeTest).to.not.exist();
+		await postmaster.assertExchange('aeTest', 'topic');
+		expect(postmaster._topology.exchanges.aeTest).to.exist();
+	});
+});
+
+describe('assertQueue:', () => {
+	let postmaster;
+
+	beforeEach(() => {
+		postmaster = new PostmasterGeneral({ logLevel: 'off' });
+	});
+
+	afterEach(async () => {
+		try {
+			if (postmaster._connection) {
+				postmaster.shutdown();
+			}
+		} catch (err) {}
+	});
+
+	it('should assert the queue and store the topology entry', async () => {
+		await postmaster.connect();
+		expect(postmaster._topology.queues.aqTest).to.not.exist();
+		await postmaster.assertQueue('aqTest');
+		expect(postmaster._topology.queues.aqTest).to.exist();
+	});
+});
+
+describe('assertBinding:', () => {
+	let postmaster;
+
+	beforeEach(() => {
+		postmaster = new PostmasterGeneral({ logLevel: 'off' });
+	});
+
+	afterEach(async () => {
+		try {
+			if (postmaster._connection) {
+				postmaster.shutdown();
+			}
+		} catch (err) {}
+	});
+
+	it('should assert the binding and store the topology entry', async () => {
+		await postmaster.connect();
+		expect(postmaster._topology.bindings.aqTest_aeTest).to.not.exist();
+		await postmaster.assertBinding('aqTest', 'aeTest', 'test.topic');
+		expect(postmaster._topology.bindings.aqTest_aeTest).to.exist();
+	});
+});
+
 // describe('publisher functions:', () => {
 // 	let postmaster;
 // 	let sandbox;
