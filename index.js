@@ -609,7 +609,7 @@ class PostmasterGeneral extends EventEmitter {
 	 * or exchanges. It is recommended that these constructs be made to auto-delete or expire
 	 * if they are not intended to be persistent.
 	 * @param {String} pattern The pattern to match.
-	 * @param {String} exchange The name of the exchange to remove the binding.
+	 * @param {String} [exchange] The name of the exchange to remove the binding.
 	 * @param {String} [prefix] The queue prefix to match.
 	 * @returns {Promise} Promise that resolves when the listener has been removed.
 	 */
@@ -617,6 +617,7 @@ class PostmasterGeneral extends EventEmitter {
 		let attempts = 0;
 
 		const topic = this._resolveTopic(pattern);
+		exchange = exchange || this._defaultExchange.name;
 		const queueName = (prefix || this._queuePrefix) + '.' + topic;
 
 		const attempt = async (skipIncrement) => {

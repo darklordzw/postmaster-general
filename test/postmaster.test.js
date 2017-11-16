@@ -458,6 +458,45 @@ describe('stopConsuming:', () => {
 	});
 });
 
+describe('removeListener:', () => {
+	let postmaster;
+
+	beforeEach(() => {
+		postmaster = new PostmasterGeneral({ logLevel: 'off' });
+	});
+
+	afterEach(async () => {
+		try {
+			if (postmaster._connection) {
+				await postmaster.shutdown();
+			}
+		} catch (err) {}
+	});
+
+	it('should cancel a consumer before removing', async () => {
+		await postmaster.connect();
+		await postmaster.addListener('rltest', async (msg) => {
+			if (msg.data === 'test') {
+				return true;
+			}
+			return false;
+		});
+		await postmaster.startConsuming();
+		const spy = sinon.spy(postmaster._channels.consumers['postmaster.queue.rltest'].cancel);
+		const spy2 = sinon.spy(postmaster._channels.consumers['postmaster.queue.rltest'].close);
+		expect(postmaster._handlers.rltest.consumerTag).to.exist();
+		expect(postmaster._channels.consumers['postmaster.queue.rltest']).to.exist();
+		expect(postmaster._handlers.rltest).to.exist();
+		expect(postmaster._topology.bindings[`postmaster.queue.rltest_${postmaster._defaultExchange.name}`]).to.exist();
+		await postmaster.removeListener('rltest');
+		spy.should.have.been.called; // eslint-disable-line no-unused-expressions
+		spy2.should.have.been.called; // eslint-disable-line no-unused-expressions
+		expect(postmaster._channels.consumers['postmaster.queue.rltest']).to.not.exist();
+		expect(postmaster._handlers.rltest).to.not.exist();
+		expect(postmaster._topology.bindings[`postmaster.queue.rltest_${postmaster._defaultExchange.name}`]).to.not.exist();
+	});
+});
+
 describe('publish:', () => {
 	let postmaster;
 
