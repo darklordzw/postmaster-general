@@ -58,15 +58,40 @@ describe('constructor:', () => {
 });
 
 describe('_resolveTopic:', () => {
+	it('should use a topic name starting with the action prefix', () => {
+		const postmaster = new PostmasterGeneral({ logLevel: 'off' });
+		const topic = postmaster._resolveTopic('role:create');
+		topic.should.contain('role.');
+	});
+});
+
+describe('outstandingMessageCount:', () => {
 	let postmaster;
 
-	before(() => {
+	beforeEach(() => {
 		postmaster = new PostmasterGeneral({ logLevel: 'off' });
 	});
 
-	it('should use a topic name starting with the action prefix', () => {
-		const topic = postmaster._resolveTopic('role:create');
-		topic.should.contain('role.');
+	it('should return 0 if there are no outstanding messages', () => {
+		postmaster.outstandingMessageCount.should.equal(0);
+	});
+
+	it('should count reply handlers', () => {
+		postmaster._replyHandlers.test = 'dummy value';
+		postmaster.outstandingMessageCount.should.equal(1);
+	});
+
+	it('should count oustanding messages from listeners', () => {
+		postmaster._handlers.test = { outstandingMessages: new Set() };
+		postmaster._handlers.test.outstandingMessages.add('test');
+		postmaster.outstandingMessageCount.should.equal(1);
+	});
+
+	it('should sum replies and oustanding messages from listeners', () => {
+		postmaster._replyHandlers.test = 'dummy value';
+		postmaster._handlers.test = { outstandingMessages: new Set() };
+		postmaster._handlers.test.outstandingMessages.add('test');
+		postmaster.outstandingMessageCount.should.equal(2);
 	});
 });
 
