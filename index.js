@@ -25,13 +25,14 @@ class PostmasterGeneral extends EventEmitter {
 		// Set initial state values.
 		this._connection = null;
 		this._connecting = false;
+		this._shuttingDown = false;
 		this._channels = {};
 		this._handlers = {};
 		this._handlerTimingsTimeout = null;
 		this._replyConsumerTag = null;
 		this._replyHandlers = {};
 		this._shouldConsume = false;
-		this._topology = { exchanges: defaults.exchanges };
+		this._topology = { exchanges: defaults.exchanges, queues: {}, bindings: {} };
 		this._createChannel = null;
 
 		// Set options and defaults.
@@ -60,7 +61,7 @@ class PostmasterGeneral extends EventEmitter {
 		// Reply queue belongs only to this instance, but we want it to survive reconnects. Thus, we set an expiration for the queue.
 		const replyQueueName = `postmaster.reply.${this._queuePrefix}.${uuidv4()}`;
 		const replyQueueExpiration = (this._connectRetryDelay * this._connectRetryLimit) + (60000 * this._connectRetryLimit);
-		this._topology.queues = { reply: { name: replyQueueName, noAck: true, expires: replyQueueExpiration } };
+		this._topology.queues = { reply: { name: replyQueueName, options: { noAck: true, expires: replyQueueExpiration } } };
 	}
 
 	/**
@@ -68,8 +69,8 @@ class PostmasterGeneral extends EventEmitter {
 	 */
 	get outstandingMessageCount() {
 		const listenerCount = Object.keys(this._handlers).reduce((sum, key) => {
-			return sum + this._handlers[key].outstandingMessages.size();
-		});
+			return sum + this._handlers[key].outstandingMessages.size;
+		}, 0);
 
 		return listenerCount + Object.keys(this._replyHandlers).length;
 	}
@@ -125,7 +126,7 @@ class PostmasterGeneral extends EventEmitter {
 
 			const reconnect = async (err) => {
 				try {
-					if (!this._connecting) {
+					if (!this._connecting && !this._shuttingDown) {
 						this._logger.warn(`Lost RabbitMQ connection and will try to reconnect! err: ${err.message}`);
 						await attemptConnect();
 						await this._assertTopology();
@@ -144,11 +145,11 @@ class PostmasterGeneral extends EventEmitter {
 			try {
 				this._logger.debug('Acquiring RabbitMQ connection...');
 				this._connection = await amqp.connect(this._url, { heartbeat: this._heartbeat });
-				this._connection.on('error', reconnect);
+				this._connection.on('error', reconnect.bind(this));
 
 				this._createChannel = async () => {
 					const channel = await this._connection.createChannel();
-					channel.on('error', reconnect);
+					channel.on('error', reconnect.bind(this));
 					return channel;
 				};
 
@@ -160,7 +161,8 @@ class PostmasterGeneral extends EventEmitter {
 					consumers: Promise.reduce(Object.keys(this._topology.queues), async (consumerMap, key) => {
 						const queue = this._topology.queues[key];
 						consumerMap[queue.name] = await this._createChannel();
-					})
+						return consumerMap;
+					}, {})
 				});
 
 				connectionAttempts = 0;
@@ -191,6 +193,7 @@ class PostmasterGeneral extends EventEmitter {
 
 		const attempt = async () => {
 			retryAttempts++;
+			this._shuttingDown = true;
 
 			this._logger.debug('Attempting shutdown...');
 
@@ -207,6 +210,10 @@ class PostmasterGeneral extends EventEmitter {
 			try {
 				await this._connection.close();
 			} catch (err) {}
+
+			if (this._handlerTimingsTimeout) {
+				clearTimeout(this._handlerTimingsTimeout);
+			}
 
 			this._logger.debug('Shutdown completed successfully!');
 		};
@@ -227,6 +234,7 @@ class PostmasterGeneral extends EventEmitter {
 	 */
 	async assertExchange(name, type, options) {
 		this._logger.debug(`Asserting exchange name: ${name} type: ${type} options: ${JSON.stringify(options)}`);
+		options = options || {};
 		await this._channels.topology.assertExchange(name, type, options);
 		this._topology.exchanges[name] = { name, type, options };
 	}
@@ -239,6 +247,7 @@ class PostmasterGeneral extends EventEmitter {
 	 */
 	async assertQueue(name, options) {
 		this._logger.debug(`Asserting queue name: ${name} options: ${JSON.stringify(options)}`);
+		options = options || {};
 		await this._channels.topology.assertQueue(name, options);
 		this._topology.queues[name] = { name, options };
 	}
@@ -253,6 +262,7 @@ class PostmasterGeneral extends EventEmitter {
 	 */
 	async assertBinding(queue, exchange, topic, options) {
 		this._logger.debug(`Asserting binding queue: ${queue} exchange: ${exchange} topic: ${topic} options: ${JSON.stringify(options)}`);
+		options = options || {};
 		await this._channels.topology.bindQueue(queue, exchange, topic, options);
 		this._topology.bindings[`${queue}_${exchange}`] = { queue, exchange, topic, options };
 	}
@@ -307,13 +317,13 @@ class PostmasterGeneral extends EventEmitter {
 		// Since the reply queue isn't bound to an exchange, we need to handle it separately.
 		if (this._topology.queues.reply) {
 			const replyQueue = this._topology.queues.reply;
-			this._replyConsumerTag = await this._channels.consumers[replyQueue.name].consume(replyQueue.name, this._handleReply, replyQueue.options);
+			this._replyConsumerTag = await this._channels.consumers[replyQueue.name].consume(replyQueue.name, this._handleReply.bind(this), replyQueue.options);
 			this._logger.debug(`Starting consuming from reply queue: ${replyQueue.name}...`);
 		}
 
 		await Promise.map(Object.keys(this._topology.bindings), async (key) => {
 			const binding = this._topology.bindings[key];
-			const consumerTag = await this._channels.consumers[binding.queue].consume(binding.queue, this._handlers[binding.topic].callback, binding.options);
+			const consumerTag = await this._channels.consumers[binding.queue].consume(binding.queue, this._handlers[binding.topic].callback.bind(this), binding.options);
 			this._handlers[binding.topic].consumerTag = consumerTag;
 			this._logger.debug(`Starting consuming from queue: ${binding.queue}...`);
 		});
@@ -374,7 +384,8 @@ class PostmasterGeneral extends EventEmitter {
 						contentEncoding: 'utf8',
 						messageId: uuidv4(),
 						correlationId: msg.properties.correlationId,
-						timestamp: new Date().getTime()
+						timestamp: new Date().getTime(),
+						replyTo: msg.properties.replyTo
 					};
 					await this._channels.replyPublish.sendToQueue(msg.properties.replyTo, Buffer.from(JSON.stringify(reply)), options);
 				}
@@ -410,7 +421,8 @@ class PostmasterGeneral extends EventEmitter {
 						contentEncoding: 'utf8',
 						messageId: uuidv4(),
 						correlationId: msg.properties.correlationId,
-						timestamp: new Date().getTime()
+						timestamp: new Date().getTime(),
+						replyTo: msg.properties.replyTo
 					};
 					await this._channels.replyPublish.sendToQueue(msg.properties.replyTo, Buffer.from(JSON.stringify({ err: reply })), options);
 				}
@@ -533,12 +545,13 @@ class PostmasterGeneral extends EventEmitter {
 		this._logger.debug(`Starting to add a listener for message: ${pattern}...`);
 		options = options || {};
 
+		const topic = this._resolveTopic(pattern);
+
 		// Configure queue options.
 		options.queue = options.queue || {};
 		options.queue.deadLetterExchange = options.deadLetterExchange || this._deadLetterExchange;
-		options.queue.deadLetterRoutingKey = pattern;
+		options.queue.deadLetterRoutingKey = topic;
 
-		const topic = this._resolveTopic(pattern);
 		const queueName = (options.queue.prefix || this._queuePrefix) + '.' + topic;
 
 		// Configure exchange options
@@ -572,12 +585,12 @@ class PostmasterGeneral extends EventEmitter {
 
 				const reply = await callback(body);
 				await this._ackMessageAndReply(queueName, msg, pattern, reply);
-				this._setHandlerTiming(pattern, start);
+				this._setHandlerTiming(topic, start);
 				this._logger.debug(`Finished handling incoming message: ${pattern} messageId: ${msg.properties.messageId}.`);
 			} catch (err) {
-				this._logger.error(`Message handler failed and cannot retry! message: ${pattern} messageId: ${msg.properties.messageId} err: ${err.message}`);
+				this._logger.error(`Message handler failed and cannot retry! message: ${pattern} err: ${err.message}`);
 				await this._nackMessageAndReply(queueName, msg, pattern, err.message);
-				this._setHandlerTiming(pattern, start);
+				this._setHandlerTiming(topic, start);
 			}
 		};
 
@@ -587,7 +600,7 @@ class PostmasterGeneral extends EventEmitter {
 	/**
 	 * Called to remove a listener. Note that this call DOES NOT delete any queues
 	 * or exchanges. It is recommended that these constructs be made to auto-delete or expire
-	 * if they are not persistent.
+	 * if they are not intended to be persistent.
 	 * @param {String} pattern The pattern to match.
 	 * @param {String} exchange The name of the exchange to remove the binding.
 	 * @param {String} [prefix] The queue prefix to match.
@@ -599,15 +612,17 @@ class PostmasterGeneral extends EventEmitter {
 		const topic = this._resolveTopic(pattern);
 		const queueName = (prefix || this._queuePrefix) + '.' + topic;
 
-		const attempt = async () => {
-			attempts++;
+		const attempt = async (skipIncrement) => {
+			if (!skipIncrement) {
+				attempts++;
+			}
 
 			this._logger.debug(`Attempting to remove a listener for message: ${pattern}...`);
 
 			if (this._connecting) {
 				this._logger.debug(`Cannot remove a listener for message: ${pattern} while reconnecting! Will retry in ${this._removeListenerRetryDelay} ms...`);
 				await Promise.delay(this._removeListenerRetryDelay);
-				return attempt();
+				return attempt(true);
 			}
 
 			try {
@@ -643,49 +658,49 @@ class PostmasterGeneral extends EventEmitter {
 	 * @returns {Promise} A promise that resolves when the message is published or publishing has failed.
 	 */
 	async publish(routingKey, message, options) {
-		let publishAttempts = 0;
-
-		// Set default publishing options.
-		options = options || {};
-		options.contentType = 'application/json';
-		options.contentEncoding = 'utf8';
-		options.messageId = options.messageId || uuidv4();
-		options.timestamp = new Date().getTime();
-
-		const exchange = options.exchange || this._defaultExchange.name;
-		const msgBody = JSON.stringify(message || '{}');
-		const msgData = Buffer.from(msgBody);
-
-		const attempt = async (skipIncrement) => {
-			this._logger.debug(`Attempting to publish fire-and-forget message: ${routingKey}...`);
-			if (!skipIncrement) {
-				publishAttempts++;
-			}
-
-			if (this._connecting) {
-				this._logger.debug(`Unable to publish fire-and-forget message: ${routingKey} while reconnecting. Will retry...`);
-				await Promise.delay(this._publishRetryDelay);
-				return attempt(true);
-			}
-
-			try {
-				const published = await this._channels.publish.publish(exchange, this._resolveTopic(routingKey), msgData, options);
-				if (published) {
-					publishAttempts = 0;
-				} else {
-					throw new Error(`Publish buffer full!`);
-				}
-			} catch (err) {
-				if (publishAttempts < this._publishRetryLimit) {
-					this._logger.debug(`Failed to publish fire-and-forget message and will retry! message: ${routingKey} err: ${err.message}`);
-					await Promise.delay(this._publishRetryDelay);
-					return attempt();
-				}
-				throw err;
-			}
-		};
-
 		try {
+			let publishAttempts = 0;
+
+			// Set default publishing options.
+			options = options || {};
+			options.contentType = 'application/json';
+			options.contentEncoding = 'utf8';
+			options.messageId = options.messageId || uuidv4();
+			options.timestamp = new Date().getTime();
+
+			const exchange = options.exchange || this._defaultExchange.name;
+			const msgBody = JSON.stringify(message || '{}');
+			const msgData = Buffer.from(msgBody);
+
+			const attempt = async (skipIncrement) => {
+				this._logger.debug(`Attempting to publish fire-and-forget message: ${routingKey}...`);
+				if (!skipIncrement) {
+					publishAttempts++;
+				}
+
+				if (this._connecting) {
+					this._logger.debug(`Unable to publish fire-and-forget message: ${routingKey} while reconnecting. Will retry...`);
+					await Promise.delay(this._publishRetryDelay);
+					return attempt(true);
+				}
+
+				try {
+					const published = await this._channels.publish.publish(exchange, this._resolveTopic(routingKey), msgData, options);
+					if (published) {
+						publishAttempts = 0;
+					} else {
+						throw new Error(`Publish buffer full!`);
+					}
+				} catch (err) {
+					if (publishAttempts < this._publishRetryLimit) {
+						this._logger.debug(`Failed to publish fire-and-forget message and will retry! message: ${routingKey} err: ${err.message}`);
+						await Promise.delay(this._publishRetryDelay);
+						return attempt();
+					}
+					throw err;
+				}
+			};
+
 			await attempt();
 		} catch (err) {
 			this._logger.error(`Failed to publish a fire-and-forget message! message: ${routingKey} err: ${err.message}`);
@@ -723,7 +738,7 @@ class PostmasterGeneral extends EventEmitter {
 			if (this._connecting) {
 				this._logger.debug(`Unable to publish RPC message: ${routingKey} while reconnecting. Will retry...`);
 				await Promise.delay(this._publishRetryDelay);
-				return attempt();
+				return attempt(true);
 			}
 
 			try {
@@ -739,7 +754,7 @@ class PostmasterGeneral extends EventEmitter {
 						if (err) {
 							reject(err);
 						} else {
-							reject(data);
+							resolve(data);
 						}
 					};
 				}).timeout(this._replyTimeout);

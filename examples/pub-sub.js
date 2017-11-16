@@ -23,4 +23,10 @@ postmaster.connect()
 		console.log(res.greeting);
 	})
 	// Shut everything down.
-	.then(() => postmaster.shutdown());
+	.then(() => postmaster.shutdown())
+	.catch((err) => {
+		console.log(err.message);
+	})
+	.then(() => {
+		process.exit();
+	});
