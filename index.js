@@ -208,6 +208,7 @@ class PostmasterGeneral extends EventEmitter {
 			}
 
 			try {
+				await this.stopConsuming();
 				await this._connection.close();
 			} catch (err) {}
 
