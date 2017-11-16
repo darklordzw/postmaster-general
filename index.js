@@ -352,8 +352,8 @@ class PostmasterGeneral extends EventEmitter {
 
 		await Promise.map(Object.keys(this._topology.bindings), async (key) => {
 			const binding = this._topology.bindings[key];
-			const consumerTag = JSON.parse(JSON.stringify(this._handlers[binding.topic].consumerTag));
-			if (consumerTag) {
+			if (this._handlers[binding.topic] && this._handlers[binding.topic].consumerTag) {
+				const consumerTag = JSON.parse(JSON.stringify(this._handlers[binding.topic].consumerTag));
 				delete this._handlers[binding.topic].consumerTag;
 				await this._channels.consumers[binding.queue].cancel(consumerTag);
 				this._logger.debug(`Stopped consuming from queue ${binding.queue}...`);
