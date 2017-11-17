@@ -590,7 +590,7 @@ class PostmasterGeneral extends EventEmitter {
 				let body = (msg.content || '{}').toString();
 				body = JSON.parse(body);
 
-				const reply = await callback(body);
+				const reply = await callback(body, msg.properties.headers);
 				await this._ackMessageAndReply(queueName, msg, pattern, reply);
 				this._setHandlerTiming(topic, start);
 				this._logger.debug(`Finished handling incoming message: ${pattern} messageId: ${msg.properties.messageId}.`);
