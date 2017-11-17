@@ -54,6 +54,12 @@ class PostmasterGeneral extends EventEmitter {
 		this._url = options.url || defaults.url;
 
 		// Configure the logger.
+		log4js.configure({
+			appenders: { out: { type: 'stdout' } },
+			categories: { default: { appenders: ['out'], level: options.logLevel ? options.logLevel : defaults.logLevel } },
+			pm2: options.pm2,
+			pm2InstanceVar: options.pm2InstanceVar
+		});
 		this._logger = log4js.getLogger('postmaster-general');
 		this._logger.level = options.logLevel ? options.logLevel : defaults.logLevel;
 

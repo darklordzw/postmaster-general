@@ -78,6 +78,8 @@ The following options may be overridden in the constructor:
 	"handlerTimingResetInterval": 30000,
 	"heartbeat": 30,
 	"logLevel": "warn",	
+	"pm2": false,
+	"pm2InstanceVar": "NODE_APP_INSTANCE",
 	"publishRetryDelay": 1000,
 	"publishRetryLimit": 3,
 	"queuePrefix": "postmaster.queue",
