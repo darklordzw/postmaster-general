@@ -11,7 +11,7 @@ const printGreeting = async (message) => {
 
 // Start the Postmaster instance.
 postmaster.connect()
-	.then(() => postmaster.addListener('action:get_greeting', printGreeting))
+	.then(() => postmaster.addRabbitMQListener('action:get_greeting', printGreeting))
 	// Add a listener callback.
 	.then(() => postmaster.startConsuming())
 	// Publish a fire-and-forget message.

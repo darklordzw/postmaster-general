@@ -562,7 +562,7 @@ class PostmasterGeneral extends EventEmitter {
 	 * @param {Object} [options] Additional options for queues, exchanges, and binding.
 	 * @returns {Promise} A promise that resolves when the listener has been added.
 	 */
-	async addListener(pattern, callback, options) {
+	async addRabbitMQListener(pattern, callback, options) {
 		this._logger.debug(`Starting to add a listener for message: ${pattern}...`);
 		options = options || {};
 
@@ -627,7 +627,7 @@ class PostmasterGeneral extends EventEmitter {
 	 * @param {String} [prefix] The queue prefix to match.
 	 * @returns {Promise} Promise that resolves when the listener has been removed.
 	 */
-	async removeListener(pattern, exchange, prefix) {
+	async removeRabbitMQListener(pattern, exchange, prefix) {
 		let attempts = 0;
 
 		const topic = this._resolveTopic(pattern);

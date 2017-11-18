@@ -399,7 +399,7 @@ describe('startConsuming:', () => {
 
 	it('should start consuming on the listener queues', async () => {
 		await postmaster.connect();
-		await postmaster.addListener('sctest', () => {
+		await postmaster.addRabbitMQListener('sctest', () => {
 			return Promise.resolve();
 		});
 		const spy = sinon.spy(postmaster._channels.consumers['postmaster.queue.sctest'].consume);
@@ -445,7 +445,7 @@ describe('stopConsuming:', () => {
 
 	it('should stop consuming on the listener queues', async () => {
 		await postmaster.connect();
-		await postmaster.addListener('sctest', () => {
+		await postmaster.addRabbitMQListener('sctest', () => {
 			return Promise.resolve();
 		});
 		await postmaster.startConsuming();
@@ -457,7 +457,7 @@ describe('stopConsuming:', () => {
 	});
 });
 
-describe('removeListener:', () => {
+describe('removeRabbitMQListener:', () => {
 	let postmaster;
 
 	beforeEach(() => {
@@ -474,7 +474,7 @@ describe('removeListener:', () => {
 
 	it('should cancel a consumer before removing', async () => {
 		await postmaster.connect();
-		await postmaster.addListener('rltest', async (msg) => {
+		await postmaster.addRabbitMQListener('rltest', async (msg) => {
 			if (msg.data === 'test') {
 				return true;
 			}
@@ -487,7 +487,7 @@ describe('removeListener:', () => {
 		expect(postmaster._channels.consumers['postmaster.queue.rltest']).to.exist();
 		expect(postmaster._handlers.rltest).to.exist();
 		expect(postmaster._topology.bindings[`postmaster.queue.rltest_${postmaster._defaultExchange.name}`]).to.exist();
-		await postmaster.removeListener('rltest');
+		await postmaster.removeRabbitMQListener('rltest');
 		spy.should.have.been.called; // eslint-disable-line no-unused-expressions
 		spy2.should.have.been.called; // eslint-disable-line no-unused-expressions
 		expect(postmaster._channels.consumers['postmaster.queue.rltest']).to.not.exist();
@@ -514,7 +514,7 @@ describe('publish:', () => {
 	it('should send a fire-and-forget message', async () => {
 		await postmaster.connect();
 		let received = false;
-		await postmaster.addListener('pubtest', (msg) => {
+		await postmaster.addRabbitMQListener('pubtest', (msg) => {
 			if (msg.data === 'test') {
 				received = true;
 			}
@@ -536,7 +536,7 @@ describe('publish:', () => {
 		const pubPromise = postmaster.publish('pubtest', { data: 'test' });
 		await postmaster.connect();
 		let received = false;
-		await postmaster.addListener('pubtest', (msg) => {
+		await postmaster.addRabbitMQListener('pubtest', (msg) => {
 			if (msg.data === 'test') {
 				received = true;
 			}
@@ -567,7 +567,7 @@ describe('request:', () => {
 
 	it('should send an RPC message', async () => {
 		await postmaster.connect();
-		await postmaster.addListener('pubtest', async (msg) => {
+		await postmaster.addRabbitMQListener('pubtest', async (msg) => {
 			if (msg.data === 'test') {
 				return true;
 			}
@@ -582,7 +582,7 @@ describe('request:', () => {
 		postmaster._connecting = true;
 		const pubPromise = postmaster.request('pubtest', { data: 'test' });
 		await postmaster.connect();
-		await postmaster.addListener('pubtest', async (msg) => {
+		await postmaster.addRabbitMQListener('pubtest', async (msg) => {
 			if (msg.data === 'test') {
 				return true;
 			}
