@@ -39,7 +39,6 @@ class PostmasterGeneral extends EventEmitter {
 		options = options || {};
 		this._connectRetryDelay = typeof options.connectRetryDelay === 'undefined' ? defaults.connectRetryDelay : options.connectRetryDelay;
 		this._connectRetryLimit = typeof options.connectRetryLimit === 'undefined' ? defaults.connectRetryLimit : options.connectRetryLimit;
-		this._consumerPrefetch = typeof options.consumerPrefetch === 'undefined' ? defaults.consumerPrefetch : options.consumerPrefetch;
 		this._deadLetterExchange = options.deadLetterExchange || defaults.deadLetterExchange;
 		this._defaultExchange = defaults.exchanges.topic;
 		this._handlerTimingResetInterval = options.handlerTimingResetInterval || defaults.handlerTimingResetInterval;
@@ -379,15 +378,18 @@ class PostmasterGeneral extends EventEmitter {
 	 * @param {Object} msg The RabbitMQ message to acknowledge.
 	 * @param {String} pattern The routing key of the message.
 	 * @param {Object} [reply] The request body of the response message to send.
+	 * @param {Boolean} [noAck] If truthy, skip the ack.
 	 * @returns {Promise} Promise that resolves when the message is acknowledged.
 	 */
-	async _ackMessageAndReply(queueName, msg, pattern, reply) {
+	async _ackMessageAndReply(queueName, msg, pattern, reply, noAck) { // eslint-disable-line max-params
 		try {
 			this._logger.debug(`Attempting to acknowledge message: ${pattern} messageId: ${msg.properties.messageId}`);
 
 			const topic = this._resolveTopic(pattern);
 			if (this._handlers[topic] && this._handlers[topic].outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
-				this._channels.consumers[queueName].ack(msg);
+				if (!noAck) {
+					this._channels.consumers[queueName].ack(msg);
+				}
 				if (msg.properties.replyTo && msg.properties.correlationId) {
 					reply = reply || {};
 					const options = {
@@ -416,15 +418,18 @@ class PostmasterGeneral extends EventEmitter {
 	 * @param {Object} msg The RabbitMQ message to nack.
 	 * @param {String} pattern The routing key of the message.
 	 * @param {String} [reply] The error message to end in reply.
+	 * @param {Boolean} [noAck] If truthy, skip the ack.
 	 * @returns {Promise} Promise that resolves when the message is nacked.
 	 */
-	async _nackMessageAndReply(queueName, msg, pattern, reply) {
+	async _nackMessageAndReply(queueName, msg, pattern, reply, noAck) { // eslint-disable-line max-params
 		try {
 			this._logger.debug(`Attempting to acknowledge message: ${pattern} messageId: ${msg.properties.messageId}`);
 
 			const topic = this._resolveTopic(pattern);
 			if (this._channels.consumers[queueName] && this._handlers[topic] && this._handlers[topic].outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
-				this._channels.consumers[queueName].nack(msg, false, false);
+				if (!noAck) {
+					this._channels.consumers[queueName].nack(msg, false, false);
+				}
 				if (msg.properties.replyTo && msg.properties.correlationId) {
 					reply = reply || 'An unknown error occurred during processing!';
 					const options = {
@@ -452,15 +457,18 @@ class PostmasterGeneral extends EventEmitter {
 	 * @param {String} queueName The queueName of the channel the message was received on.
 	 * @param {Object} msg The RabbitMQ message to reject.
 	 * @param {String} pattern The routing key of the message.
+	 * @param {Boolean} [noAck] If truthy, skip the nack.
 	 * @returns {Promise} Promise that resolves when the message is rejected.
 	 */
-	async _rejectMessage(queueName, msg, pattern) {
+	async _rejectMessage(queueName, msg, pattern, noAck) {
 		try {
 			this._logger.debug(`Attempting to acknowledge message: ${pattern} messageId: ${msg.properties.messageId}`);
 
 			const topic = this._resolveTopic(pattern);
 			if (this._channels.consumers[queueName] && this._handlers[topic] && this._handlers[topic].outstandingMessages.has(`${pattern}_${msg.properties.messageId}`)) {
-				this._channels.consumers[queueName].reject(msg);
+				if (!noAck) {
+					this._channels.consumers[queueName].reject(msg);
+				}
 				this._handlers[topic].outstandingMessages.delete(`${pattern}_${msg.properties.messageId}`);
 			} else {
 				this._logger.warn(`Skipping message rejection due to connection failure! message: ${pattern} messageId: ${msg.properties.messageId}`);
@@ -597,12 +605,12 @@ class PostmasterGeneral extends EventEmitter {
 				body = JSON.parse(body);
 
 				const reply = await callback(body, msg.properties.headers);
-				await this._ackMessageAndReply(queueName, msg, pattern, reply);
+				await this._ackMessageAndReply(queueName, msg, pattern, reply, options.noAck);
 				this._setHandlerTiming(topic, start);
 				this._logger.debug(`Finished handling incoming message: ${pattern} messageId: ${msg.properties.messageId}.`);
 			} catch (err) {
 				this._logger.error(`Message handler failed and cannot retry! message: ${pattern} err: ${err.message}`);
-				await this._nackMessageAndReply(queueName, msg, pattern, err.message);
+				await this._nackMessageAndReply(queueName, msg, pattern, err.message, options.noAck);
 				this._setHandlerTiming(topic, start);
 			}
 		};

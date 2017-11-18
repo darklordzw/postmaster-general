@@ -1,7 +1,6 @@
 {
 	"connectRetryDelay": 1000,
 	"connectRetryLimit": 3,
-	"consumerPrefetch": 1,
 	"deadLetterExchange": "postmaster.dlx",
 	"exchanges": {
 		"dlx": {

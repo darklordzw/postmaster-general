@@ -63,18 +63,7 @@ The following options may be overridden in the constructor:
 {
 	"connectRetryDelay": 1000,
 	"connectRetryLimit": 3,
-	"consumerPrefetch": 1,
 	"deadLetterExchange": "postmaster.dlx",
-	"exchanges": {
-		"dlx": {
-			"name": "postmaster.dlx",
-			"type": "topic"
-		},
-		"topic": {
-			"name": "postmaster.topic",
-			"type": "topic"
-		}
-	},
 	"handlerTimingResetInterval": 30000,
 	"heartbeat": 30,
 	"logLevel": "warn",	

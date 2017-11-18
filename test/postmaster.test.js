@@ -36,7 +36,6 @@ describe('constructor:', () => {
 		expect(postmaster._createChannel).to.be.null();
 		postmaster._connectRetryDelay.should.equal(defaults.connectRetryDelay);
 		postmaster._connectRetryLimit.should.equal(defaults.connectRetryLimit);
-		postmaster._consumerPrefetch.should.equal(defaults.consumerPrefetch);
 		postmaster._deadLetterExchange.should.equal(defaults.deadLetterExchange);
 		postmaster._defaultExchange.should.equal(defaults.exchanges.topic);
 		postmaster._handlerTimingResetInterval.should.equal(defaults.handlerTimingResetInterval);
