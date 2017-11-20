@@ -1,6 +1,6 @@
 {
   "name": "postmaster-general",
-  "version": "3.1.1",
+  "version": "3.1.2",
   "description": "A simple library for making microservice message bus calls using Node.js over RabbitMQ.",
   "author": "Ben Whatley",
   "repository": {
