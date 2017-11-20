@@ -166,6 +166,9 @@ class PostmasterGeneral extends EventEmitter {
 					consumers: Promise.reduce(Object.keys(this._topology.queues), async (consumerMap, key) => {
 						const queue = this._topology.queues[key];
 						consumerMap[queue.name] = await this._createChannel();
+						if (queue.options && queue.options.prefetch) {
+							await consumerMap[queue.name].prefetch(queue.options.prefetch);
+						}
 						return consumerMap;
 					}, {})
 				});
@@ -586,6 +589,10 @@ class PostmasterGeneral extends EventEmitter {
 		await this.assertExchange(options.exchange.name, options.exchange.type, options.exchange);
 		await this.assertQueue(queueName, options.queue);
 		await this.assertBinding(queueName, options.exchange.name, topic, options.binding);
+
+		if (options.queue && options.queue.prefetch) {
+			await this._channels.consumers[queueName].prefetch(options.queue.prefetch);
+		}
 
 		// Define the callback handler.
 		this._handlers[topic] = { outstandingMessages: new Set() };
