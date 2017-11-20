@@ -616,7 +616,7 @@ class PostmasterGeneral extends EventEmitter {
 		};
 
 		if (this._shouldConsume) {
-			const binding = this._topology.bindings[topic];
+			const binding = this._topology.bindings[`${queueName}_${options.exchange.name}`];
 			const consumerTag = await this._channels.consumers[binding.queue].consume(binding.queue, this._handlers[binding.topic].callback.bind(this), binding.options);
 			this._handlers[binding.topic].consumerTag = consumerTag.consumerTag;
 			this._logger.debug(`Starting consuming from queue: ${binding.queue}...`);
