@@ -163,15 +163,16 @@ class PostmasterGeneral extends EventEmitter {
 					publish: this._createChannel(),
 					replyPublish: this._createChannel(),
 					topology: this._createChannel(),
-					consumers: Promise.reduce(Object.keys(this._topology.queues), async (consumerMap, key) => {
-						const queue = this._topology.queues[key];
-						consumerMap[queue.name] = await this._createChannel();
-						if (queue.options && queue.options.prefetch) {
-							await consumerMap[queue.name].prefetch(queue.options.prefetch);
+					consumers: Promise.reduce(Object.keys(this._topology.bindings), async (consumerMap, key) => {
+						const binding = this._topology.bindings[key];
+						consumerMap[binding.queue] = await this._createChannel();
+						if (binding.options && binding.options.prefetch) {
+							await consumerMap[binding.queue].prefetch(binding.options.prefetch);
 						}
 						return consumerMap;
 					}, {})
 				});
+				this._channels.consumers[this._topology.queues.reply.name] = await this._createChannel();
 
 				connectionAttempts = 0;
 				this._connecting = false;
@@ -590,8 +591,9 @@ class PostmasterGeneral extends EventEmitter {
 		await this.assertQueue(queueName, options.queue);
 		await this.assertBinding(queueName, options.exchange.name, topic, options.binding);
 
-		if (options.queue && options.queue.prefetch) {
-			await this._channels.consumers[queueName].prefetch(options.queue.prefetch);
+		options.binding = options.binding || {};
+		if (options.binding.prefetch) {
+			await this._channels.consumers[queueName].prefetch(options.binding.prefetch);
 		}
 
 		// Define the callback handler.
@@ -612,12 +614,12 @@ class PostmasterGeneral extends EventEmitter {
 				body = JSON.parse(body);
 
 				const reply = await callback(body, msg.properties.headers);
-				await this._ackMessageAndReply(queueName, msg, pattern, reply, options.noAck);
+				await this._ackMessageAndReply(queueName, msg, pattern, reply, options.binding.noAck);
 				this._setHandlerTiming(topic, start);
 				this._logger.debug(`Finished handling incoming message: ${pattern} messageId: ${msg.properties.messageId}.`);
 			} catch (err) {
 				this._logger.error(`Message handler failed and cannot retry! message: ${pattern} err: ${err.message}`);
-				await this._nackMessageAndReply(queueName, msg, pattern, err.message, options.noAck);
+				await this._nackMessageAndReply(queueName, msg, pattern, err.message, options.binding.noAck);
 				this._setHandlerTiming(topic, start);
 			}
 		};
