@@ -609,7 +609,10 @@ class PostmasterGeneral extends EventEmitter {
 				msg.properties = msg.properties || {};
 				msg.properties.headers = msg.properties.headers || {};
 				msg.properties.messageId = msg.properties.messageId || msg.properties.correlationId;
-				msg.properties.correlationId = msg.properties.correlationId || msg.properties.messageId;
+				msg.properties.correlationId = msg.properties.messageId;
+
+				// The "rabbot" library requires this as it supports streaming sequences. Added here for compatibility.
+				msg.properties.headers.sequence_end = true; // eslint-disable-line camelcase
 
 				this._logger.debug(`Handling incoming message: ${pattern} messageId: ${msg.properties.messageId}...`);
 
