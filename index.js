@@ -399,10 +399,12 @@ class PostmasterGeneral extends EventEmitter {
 					const options = {
 						contentType: 'application/json',
 						contentEncoding: 'utf8',
-						messageId: uuidv4(),
+						messageId: msg.properties.messageId,
 						correlationId: msg.properties.correlationId,
 						timestamp: new Date().getTime(),
-						replyTo: msg.properties.replyTo
+						replyTo: msg.properties.replyTo,
+						type: msg.properties.type,
+						headers: msg.properties.headers
 					};
 					this._channels.replyPublish.sendToQueue(msg.properties.replyTo, Buffer.from(JSON.stringify(reply)), options);
 				}
@@ -439,10 +441,12 @@ class PostmasterGeneral extends EventEmitter {
 					const options = {
 						contentType: 'application/json',
 						contentEncoding: 'utf8',
-						messageId: uuidv4(),
+						messageId: msg.properties.messageId,
 						correlationId: msg.properties.correlationId,
 						timestamp: new Date().getTime(),
-						replyTo: msg.properties.replyTo
+						replyTo: msg.properties.replyTo,
+						type: msg.properties.type,
+						headers: msg.properties.headers
 					};
 					this._channels.replyPublish.sendToQueue(msg.properties.replyTo, Buffer.from(JSON.stringify({ err: reply })), options);
 				}
@@ -605,6 +609,7 @@ class PostmasterGeneral extends EventEmitter {
 				msg.properties = msg.properties || {};
 				msg.properties.headers = msg.properties.headers || {};
 				msg.properties.messageId = msg.properties.messageId || msg.properties.correlationId;
+				msg.properties.correlationId = msg.properties.correlationId || msg.properties.messageId;
 
 				this._logger.debug(`Handling incoming message: ${pattern} messageId: ${msg.properties.messageId}...`);
 
