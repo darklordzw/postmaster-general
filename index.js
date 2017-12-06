@@ -29,6 +29,8 @@ class PostmasterGeneral extends EventEmitter {
 		this._channels = {};
 		this._handlers = {};
 		this._handlerTimingsTimeout = null;
+		this._topologyCheckTimeout = null;
+		this._topologyCheckInterval = 30000;
 		this._replyConsumerTag = null;
 		this._replyHandlers = {};
 		this._shouldConsume = false;
@@ -126,7 +128,7 @@ class PostmasterGeneral extends EventEmitter {
 						this._handlers[key].outstandingMessages.clear();
 					}
 				}
-				await this._connection.close();
+				await this._connection.close().timeout(1000);
 			} catch (err) {}
 
 			const reconnect = async (err) => {
@@ -134,7 +136,6 @@ class PostmasterGeneral extends EventEmitter {
 					if (!this._connecting && !this._shuttingDown) {
 						this._logger.warn(`Lost RabbitMQ connection and will try to reconnect! err: ${err.message}`);
 						await attemptConnect();
-						await this._assertTopology();
 						if (this._shouldConsume) {
 							await this.startConsuming();
 						}
@@ -149,11 +150,12 @@ class PostmasterGeneral extends EventEmitter {
 
 			try {
 				this._logger.debug('Acquiring RabbitMQ connection...');
-				this._connection = await amqp.connect(this._url, { heartbeat: this._heartbeat });
+				this._connection = await amqp.connect(this._url, { heartbeat: this._heartbeat }).timeout(1000);
 				this._connection.on('error', reconnect.bind(this));
+				this._connection.on('close', this.shutdown.bind(this));
 
 				this._createChannel = async () => {
-					const channel = await this._connection.createChannel();
+					const channel = await this._connection.createChannel().timeout(1000);
 					channel.on('error', reconnect.bind(this));
 					return channel;
 				};
@@ -167,7 +169,7 @@ class PostmasterGeneral extends EventEmitter {
 						const binding = this._topology.bindings[key];
 						consumerMap[binding.queue] = await this._createChannel();
 						if (binding.options && binding.options.prefetch) {
-							await consumerMap[binding.queue].prefetch(binding.options.prefetch);
+							await consumerMap[binding.queue].prefetch(binding.options.prefetch).timeout(1000);
 						}
 						return consumerMap;
 					}, {})
@@ -176,6 +178,7 @@ class PostmasterGeneral extends EventEmitter {
 
 				connectionAttempts = 0;
 				this._connecting = false;
+				await this._assertTopology();
 				this._logger.debug('Finished connecting to RabbitMQ!');
 			} catch (err) {
 				if (connectionAttempts < this._connectRetryLimit) {
@@ -189,7 +192,6 @@ class PostmasterGeneral extends EventEmitter {
 		};
 
 		await attemptConnect();
-		await this._assertTopology();
 	}
 
 	/**
@@ -200,18 +202,19 @@ class PostmasterGeneral extends EventEmitter {
 		const retryLimit = this._shutdownTimeout / shutdownRetryDelay;
 		let retryAttempts = 0;
 
+		// If we're trying to reconnect or are already shutting down, don't bother processing again.
+		if (this._connecting || this._shuttingDown) {
+			return;
+		}
+
 		const attempt = async () => {
 			retryAttempts++;
 			this._shuttingDown = true;
 
 			this._logger.debug('Attempting shutdown...');
 
-			if ((this._connecting || this.outstandingMessageCount > 0) && retryAttempts < retryLimit) {
-				if (this._connecting) {
-					this._logger.debug('Unable to shutdown while attempting reconnect! Will retry...');
-				} else {
-					this._logger.debug(`Unable to shutdown while processing ${this.outstandingMessageCount} messages! Will retry...`);
-				}
+			if (this.outstandingMessageCount > 0 && retryAttempts < retryLimit) {
+				this._logger.debug(`Unable to shutdown while processing ${this.outstandingMessageCount} messages! Will retry...`);
 				await Promise.delay(shutdownRetryDelay);
 				return attempt();
 			}
@@ -221,14 +224,19 @@ class PostmasterGeneral extends EventEmitter {
 			} catch (err) {}
 
 			try {
-				await this._connection.close();
+				await this._connection.close().timeout(1000);
 			} catch (err) {}
 
 			if (this._handlerTimingsTimeout) {
 				clearTimeout(this._handlerTimingsTimeout);
 			}
 
+			if (this._topologyCheckTimeout) {
+				clearTimeout(this._topologyCheckTimeout);
+			}
+
 			this._logger.debug('Shutdown completed successfully!');
+			this.emit('close');
 		};
 
 		try {
@@ -246,9 +254,15 @@ class PostmasterGeneral extends EventEmitter {
 	 * @returns {Promise} Promise that resolves when the exchange has been asserted.
 	 */
 	async assertExchange(name, type, options) {
+		const defaultExchanges = Object.keys(defaults.exchanges).map((key) => {
+			return defaults.exchanges[key].name;
+		});
+		if (defaultExchanges.includes(name)) {
+			return;
+		}
 		this._logger.debug(`Asserting exchange name: ${name} type: ${type} options: ${JSON.stringify(options)}`);
 		options = options || {};
-		await this._channels.topology.assertExchange(name, type, options);
+		await this._channels.topology.assertExchange(name, type, options).timeout(1000);
 		this._topology.exchanges[name] = { name, type, options };
 	}
 
@@ -261,7 +275,7 @@ class PostmasterGeneral extends EventEmitter {
 	async assertQueue(name, options) {
 		this._logger.debug(`Asserting queue name: ${name} options: ${JSON.stringify(options)}`);
 		options = options || {};
-		await this._channels.topology.assertQueue(name, options);
+		await this._channels.topology.assertQueue(name, options).timeout(1000);
 		this._topology.queues[name] = { name, options };
 	}
 
@@ -276,7 +290,7 @@ class PostmasterGeneral extends EventEmitter {
 	async assertBinding(queue, exchange, topic, options) {
 		this._logger.debug(`Asserting binding queue: ${queue} exchange: ${exchange} topic: ${topic} options: ${JSON.stringify(options)}`);
 		options = options || {};
-		await this._channels.topology.bindQueue(queue, exchange, topic, options);
+		await this._channels.topology.bindQueue(queue, exchange, topic, options).timeout(1000);
 		this._topology.bindings[`${queue}_${exchange}`] = { queue, exchange, topic, options };
 	}
 
@@ -310,10 +324,62 @@ class PostmasterGeneral extends EventEmitter {
 		await Promise.map(Object.keys(this._topology.bindings), (key) => {
 			const binding = this._topology.bindings[key];
 			this._logger.debug(`Asserting binding queue: ${binding.queue} exchange: ${binding.exchange} topic: ${binding.topic} options: ${JSON.stringify(binding.options)}...`);
-			return this._channels.topology.bindQueue(binding.queue, binding.exchange, binding.topic, binding.options);
+			return this._channels.topology.bindQueue(binding.queue, binding.exchange, binding.topic, binding.options).timeout(1000);
 		});
 
+		// Start timer for topology check.
+		await this._checkTopology();
+
 		this._logger.debug('Finished asserting defined topology!');
+	}
+
+	/**
+	 * Called periodically to confirm the existence of expected topology.
+	 * @returns {Promise} Promise resolving when all defined topology has been confirmed.
+	 */
+	async _checkTopology() {
+		const topologyPromises = [];
+
+		// No need to check topology if we're stil starting or are shutting down.
+		if (this._shuttingDown || this._connecting) {
+			return;
+		}
+
+		this._logger.debug('Confirming pre-defined topology...');
+
+		try {
+			// Confirm exchanges.
+			for (const key of Object.keys(this._topology.exchanges)) {
+				const exchange = this._topology.exchanges[key];
+				this._logger.debug(`Confirming exchange name: ${exchange.name} type: ${exchange.type} options: ${JSON.stringify(exchange.options)}...`);
+				topologyPromises.push(this._channels.topology.checkExchange(exchange.name));
+			}
+
+			// Confirm consumer queues.
+			for (const key of Object.keys(this._topology.queues)) {
+				const queue = this._topology.queues[key];
+				this._logger.debug(`Confirming queue name: ${queue.name} options: ${JSON.stringify(queue.options)}...`);
+				topologyPromises.push(this._channels.topology.checkQueue(queue.name));
+			}
+
+			// Await all assertions before asserting bindings.
+			await Promise.all(topologyPromises);
+
+			// Bind listeners.
+			await Promise.map(Object.keys(this._topology.bindings), (key) => {
+				const binding = this._topology.bindings[key];
+				this._logger.debug(`Confirming binding queue: ${binding.queue} exchange: ${binding.exchange} topic: ${binding.topic} options: ${JSON.stringify(binding.options)}...`);
+				return this._channels.topology.bindQueue(binding.queue, binding.exchange, binding.topic, binding.options).timeout(1000);
+			});
+
+			this._topologyCheckTimeout = setTimeout(() => {
+				this._checkTopology();
+			}, this._topologyCheckInterval);
+
+			this._logger.debug('Finished confirming defined topology!');
+		} catch (err) {
+			this._logger.error(`Unable to confirm defined topology! err: ${err.message}`);
+		}
 	}
 
 	/**
@@ -330,14 +396,14 @@ class PostmasterGeneral extends EventEmitter {
 		// Since the reply queue isn't bound to an exchange, we need to handle it separately.
 		if (this._topology.queues.reply) {
 			const replyQueue = this._topology.queues.reply;
-			this._replyConsumerTag = await this._channels.consumers[replyQueue.name].consume(replyQueue.name, this._handleReply.bind(this), replyQueue.options);
+			this._replyConsumerTag = await this._channels.consumers[replyQueue.name].consume(replyQueue.name, this._handleReply.bind(this), replyQueue.options).timeout(1000);
 			this._replyConsumerTag = this._replyConsumerTag.consumerTag;
 			this._logger.debug(`Starting consuming from reply queue: ${replyQueue.name}...`);
 		}
 
 		await Promise.map(Object.keys(this._topology.bindings), async (key) => {
 			const binding = this._topology.bindings[key];
-			const consumerTag = await this._channels.consumers[binding.queue].consume(binding.queue, this._handlers[binding.topic].callback.bind(this), binding.options);
+			const consumerTag = await this._channels.consumers[binding.queue].consume(binding.queue, this._handlers[binding.topic].callback.bind(this), binding.options).timeout(1000);
 			this._handlers[binding.topic].consumerTag = consumerTag.consumerTag;
 			this._logger.debug(`Starting consuming from queue: ${binding.queue}...`);
 		});
@@ -355,10 +421,8 @@ class PostmasterGeneral extends EventEmitter {
 
 		this._logger.debug('Starting to cancel all consumers...');
 
-		this._resetHandlerTimings();
-
 		if (this._replyConsumerTag && !awaitReplies) {
-			await this._channels.consumers[this._topology.queues.reply.name].cancel(this._replyConsumerTag);
+			await this._channels.consumers[this._topology.queues.reply.name].cancel(this._replyConsumerTag).timeout(1000);
 			this._replyConsumerTag = null;
 			this._logger.debug(`Stopped consuming from queue ${this._topology.queues.reply.name}...`);
 		}
@@ -368,7 +432,7 @@ class PostmasterGeneral extends EventEmitter {
 			if (this._handlers[binding.topic] && this._handlers[binding.topic].consumerTag) {
 				const consumerTag = JSON.parse(JSON.stringify(this._handlers[binding.topic].consumerTag));
 				delete this._handlers[binding.topic].consumerTag;
-				await this._channels.consumers[binding.queue].cancel(consumerTag);
+				await this._channels.consumers[binding.queue].cancel(consumerTag).timeout(1000);
 				this._logger.debug(`Stopped consuming from queue ${binding.queue}...`);
 			}
 		});
@@ -555,7 +619,7 @@ class PostmasterGeneral extends EventEmitter {
 		}
 
 		// If we're not manually managing the timing refresh, schedule the next timeout.
-		if (this._handlerTimingResetInterval) {
+		if (this._handlerTimingResetInterval && !this._shuttingDown) {
 			this._logger.debug(`Setting next timing refresh in ${this._handlerTimingResetInterval} ms.`);
 			this._handlerTimingsTimeout = setTimeout(() => {
 				this._resetHandlerTimings();
@@ -597,13 +661,18 @@ class PostmasterGeneral extends EventEmitter {
 
 		options.binding = options.binding || {};
 		if (options.binding.prefetch) {
-			await this._channels.consumers[queueName].prefetch(options.binding.prefetch);
+			await this._channels.consumers[queueName].prefetch(options.binding.prefetch).timeout(1000);
 		}
 
 		// Define the callback handler.
 		this._handlers[topic] = { outstandingMessages: new Set() };
 		this._handlers[topic].callback = async (msg) => {
 			const start = new Date().getTime();
+
+			// If we have no message, the consumer was likely cancelled. Just return.
+			if (!msg) {
+				return;
+			}
 
 			try {
 				msg.properties = msg.properties || {};
@@ -634,7 +703,7 @@ class PostmasterGeneral extends EventEmitter {
 
 		if (this._shouldConsume) {
 			const binding = this._topology.bindings[`${queueName}_${options.exchange.name}`];
-			const consumerTag = await this._channels.consumers[binding.queue].consume(binding.queue, this._handlers[binding.topic].callback.bind(this), binding.options);
+			const consumerTag = await this._channels.consumers[binding.queue].consume(binding.queue, this._handlers[binding.topic].callback.bind(this), binding.options).timeout(1000);
 			this._handlers[binding.topic].consumerTag = consumerTag.consumerTag;
 			this._logger.debug(`Starting consuming from queue: ${binding.queue}...`);
 		}
@@ -675,10 +744,10 @@ class PostmasterGeneral extends EventEmitter {
 				if (this._channels.consumers[queueName]) {
 					this._logger.debug(`Cancelling consumer for message: ${pattern}...`);
 					if (this._handlers[topic].consumerTag) {
-						await this._channels.consumers[queueName].cancel(this._handlers[topic].consumerTag);
+						await this._channels.consumers[queueName].cancel(this._handlers[topic].consumerTag).timeout(1000);
 					}
 					this._handlers[topic].outstandingMessages.clear();
-					await this._channels.consumers[queueName].close();
+					await this._channels.consumers[queueName].close().timeout(1000);
 					delete this._channels.consumers[queueName];
 				}
 				delete this._handlers[topic];
