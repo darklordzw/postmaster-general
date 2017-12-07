@@ -307,14 +307,14 @@ class PostmasterGeneral extends EventEmitter {
 		for (const key of Object.keys(this._topology.exchanges)) {
 			const exchange = this._topology.exchanges[key];
 			this._logger.debug(`Asserting exchange name: ${exchange.name} type: ${exchange.type} options: ${JSON.stringify(exchange.options)}...`);
-			topologyPromises.push(this._channels.topology.assertExchange(exchange.name, exchange.type, exchange.options));
+			topologyPromises.push(this._channels.topology.assertExchange(exchange.name, exchange.type, exchange.options).timeout(1000));
 		}
 
 		// Assert consumer queues.
 		for (const key of Object.keys(this._topology.queues)) {
 			const queue = this._topology.queues[key];
 			this._logger.debug(`Asserting queue name: ${queue.name} options: ${JSON.stringify(queue.options)}...`);
-			topologyPromises.push(this._channels.topology.assertQueue(queue.name, queue.options));
+			topologyPromises.push(this._channels.topology.assertQueue(queue.name, queue.options).timeout(1000));
 		}
 
 		// Await all assertions before asserting bindings.
@@ -352,14 +352,14 @@ class PostmasterGeneral extends EventEmitter {
 			for (const key of Object.keys(this._topology.exchanges)) {
 				const exchange = this._topology.exchanges[key];
 				this._logger.debug(`Confirming exchange name: ${exchange.name} type: ${exchange.type} options: ${JSON.stringify(exchange.options)}...`);
-				topologyPromises.push(this._channels.topology.checkExchange(exchange.name));
+				topologyPromises.push(this._channels.topology.checkExchange(exchange.name).timeout(1000));
 			}
 
 			// Confirm consumer queues.
 			for (const key of Object.keys(this._topology.queues)) {
 				const queue = this._topology.queues[key];
 				this._logger.debug(`Confirming queue name: ${queue.name} options: ${JSON.stringify(queue.options)}...`);
-				topologyPromises.push(this._channels.topology.checkQueue(queue.name));
+				topologyPromises.push(this._channels.topology.checkQueue(queue.name).timeout(1000));
 			}
 
 			// Await all assertions before asserting bindings.
