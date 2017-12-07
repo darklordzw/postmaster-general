@@ -225,22 +225,6 @@ describe('shutdown:', () => {
 		spy.should.have.been.calledOnce; // eslint-disable-line no-unused-expressions
 	});
 
-	it('should retry if called while attempting to connect', async () => {
-		await postmaster.connect();
-		postmaster._connecting = true;
-		const shutdownPromise = postmaster.shutdown();
-		expect(postmaster._connection).to.not.be.null();
-		await postmaster._channels.topology.checkExchange(postmaster._defaultExchange.name);
-		postmaster._connecting = false;
-		await Promise.delay(1000);
-		try {
-			await postmaster._channels.topology.checkExchange(postmaster._defaultExchange.name);
-		} catch (err) {
-			return shutdownPromise;
-		}
-		throw new Error('Failed to retry shutdown!');
-	}).timeout(5000);
-
 	it('should retry if called while outstanding messages are processing', async () => {
 		await postmaster.connect();
 		postmaster._replyHandlers.test = 'dummy value';
