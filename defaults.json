@@ -1,4 +1,7 @@
 {
+	"assertTimeout": 2000,
+	"connectTimeout": 2000,
+	"connectionCloseTimeout": 2000,
 	"connectRetryDelay": 1000,
 	"connectRetryLimit": 3,
 	"deadLetterExchange": "postmaster.dlx",
@@ -21,5 +24,6 @@
 	"removeListenerRetryDelay": 1000,
 	"removeListenerRetryLimit": 3,
 	"shutdownTimeout": 30000,
+	"topologyCheckInterval": 30000,
 	"url": "amqp://guest:guest@localhost:5672"
 }
