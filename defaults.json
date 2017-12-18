@@ -1,7 +1,5 @@
 {
-	"assertTimeout": 2000,
 	"connectTimeout": 2000,
-	"connectionCloseTimeout": 2000,
 	"connectRetryDelay": 1000,
 	"connectRetryLimit": 3,
 	"deadLetterExchange": "postmaster.dlx",
