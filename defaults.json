@@ -14,7 +14,7 @@
 		}
 	},
 	"handlerTimingResetInterval": 30000,
-	"heartbeat": 30,
+	"heartbeat": 5000,
 	"logLevel": "warn",	
 	"publishRetryDelay": 1000,
 	"publishRetryLimit": 3,
