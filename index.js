@@ -166,7 +166,7 @@ class PostmasterGeneral extends EventEmitter {
 		}
 	}
 
-	addListener(pattern, callback, options) {
+	async addListener(pattern, callback, options) {
 		options = options || {};
 
 		const topic = this._resolveTopic(pattern);
