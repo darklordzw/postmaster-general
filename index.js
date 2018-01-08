@@ -360,62 +360,7 @@ class PostmasterGeneral extends EventEmitter {
 		return attempt();
 	}
 
-	/**
-	 * Publishes a fire-and-forget message that doesn't wait for an explicit response.
-	 * @param {String} routingKey The routing key to attach to the message.
-	 * @param {Object} [message] The message data to publish.
-	 * @param {Object} [options] Optional publishing options.
-	 * @returns {Promise} A promise that resolves when the message is published or publishing has failed.
-	 */
-	async publish(routingKey, message, options) {
-		try {
-			let publishAttempts = 0;
-
-			// Set default publishing options.
-			options = options || {};
-			options.contentType = 'application/json';
-			options.contentEncoding = 'utf8';
-			options.messageId = options.messageId || uuidv4();
-			options.timestamp = new Date().getTime();
-
-			const exchange = options.exchange || this._defaultExchange.name;
-			const msgBody = JSON.stringify(message || '{}');
-			const msgData = Buffer.from(msgBody);
-
-			const attempt = async (skipIncrement) => {
-				this._logger.debug(`Attempting to publish fire-and-forget message: ${routingKey}...`);
-				if (!skipIncrement) {
-					publishAttempts++;
-				}
-
-				if (this._connecting) {
-					this._logger.debug(`Unable to publish fire-and-forget message: ${routingKey} while reconnecting. Will retry...`);
-					await Promise.delay(this._publishRetryDelay);
-					return attempt(true);
-				}
-
-				try {
-					const published = this._channels.publish.publish(exchange, this._resolveTopic(routingKey), msgData, options);
-					if (published) {
-						publishAttempts = 0;
-					} else {
-						throw new Error(`Publish buffer full!`);
-					}
-				} catch (err) {
-					if (publishAttempts < this._publishRetryLimit) {
-						this._logger.debug(`Failed to publish fire-and-forget message and will retry! message: ${routingKey} err: ${err.message}`);
-						await Promise.delay(this._publishRetryDelay);
-						return attempt();
-					}
-					throw err;
-				}
-			};
-
-			await attempt();
-		} catch (err) {
-			this._logger.error(`Failed to publish a fire-and-forget message! message: ${routingKey} err: ${err.message}`);
-		}
-	}
+	
 
 	/**
 	 * Called to send a reply to a message.
@@ -461,71 +406,6 @@ class PostmasterGeneral extends EventEmitter {
 				err: err.message
 			});
 		}
-	}
-
-	/**
-	 * Publishes an RPC-style message that waits for a response.
-	 * @param {String} routingKey The routing key to attach to the message.
-	 * @param {Object} [message] The message data to publish.
-	 * @param {Object} [options] Optional publishing options.
-	 * @returns {Promise} A promise that resolves when the message is successfully published and a reply is received.
-	 */
-	async request(routingKey, message, options) {
-		let publishAttempts = 0;
-
-		// Set default publishing options.
-		options = options || {};
-		options.contentType = 'application/json';
-		options.contentEncoding = 'utf8';
-		options.messageId = options.messageId || uuidv4();
-		options.correlationId = options.correlationId || options.messageId;
-		options.replyTo = this._topology.queues.reply.name;
-		options.timestamp = new Date().getTime();
-
-		const exchange = options.exchange || this._defaultExchange.name;
-		const msgData = Buffer.from(JSON.stringify(message || '{}'));
-
-		const attempt = async (skipIncrement) => {
-			this._logger.debug(`Attempting to publish RPC message: ${routingKey}...`);
-			if (!skipIncrement) {
-				publishAttempts++;
-			}
-
-			if (this._connecting) {
-				this._logger.debug(`Unable to publish RPC message: ${routingKey} while reconnecting. Will retry...`);
-				await Promise.delay(this._publishRetryDelay);
-				return attempt(true);
-			}
-
-			try {
-				const published = this._channels.publish.publish(exchange, this._resolveTopic(routingKey), msgData, options);
-				if (published) {
-					publishAttempts = 0;
-				} else {
-					throw new Error(`Publish buffer full!`);
-				}
-
-				return new Promise((resolve, reject) => {
-					this._replyHandlers[options.correlationId] = (err, data) => {
-						if (err) {
-							reject(err);
-						} else {
-							resolve(data);
-						}
-					};
-				}).timeout(this._replyTimeout);
-			} catch (err) {
-				if (publishAttempts < this._publishRetryLimit) {
-					this._logger.debug(`Failed to publish RPC message and will retry! message: ${routingKey} err: ${err.message}`);
-					await Promise.delay(this._publishRetryDelay);
-					return attempt();
-				}
-				this._logger.debug(`Failed to publish RPC message: ${routingKey} err: ${err.message}`);
-				throw err;
-			}
-		};
-
-		return attempt();
 	}
 }
 
