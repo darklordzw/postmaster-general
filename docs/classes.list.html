@@ -33,21 +33,21 @@
 			<li class="dropdown">
 				<a href="modules.list.html" class="dropdown-toggle" data-toggle="dropdown">Modules<b class="caret"></b></a>
 				<ul class="dropdown-menu ">
-					<li><a href="module-lib_consumer.html">lib/consumer</a></li><li><a href="module-lib_postmaster-general.html">lib/postmaster-general</a></li>
+					<li><a href="module-lib_postmaster-general.html">lib/postmaster-general</a></li><li><a href="module-lib_reply-consumer.html">lib/reply-consumer</a></li><li><a href="module-lib_topic-consumer.html">lib/topic-consumer</a></li>
 				</ul>
 			</li>
 			
 			<li class="dropdown">
 				<a href="classes.list.html" class="dropdown-toggle" data-toggle="dropdown">Classes<b class="caret"></b></a>
 				<ul class="dropdown-menu ">
-					<li><a href="module-lib_consumer-Consumer.html">lib/consumer~Consumer</a></li><li><a href="module-lib_postmaster-general-PostmasterGeneral.html">lib/postmaster-general~PostmasterGeneral</a></li>
+					<li><a href="module-lib_postmaster-general-PostmasterGeneral.html">lib/postmaster-general~PostmasterGeneral</a></li><li><a href="module-lib_reply-consumer-ReplyConsumer.html">lib/reply-consumer~ReplyConsumer</a></li><li><a href="module-lib_topic-consumer-TopicConsumer.html">lib/topic-consumer~TopicConsumer</a></li>
 				</ul>
 			</li>
 			
 			<li class="dropdown">
 				<a href="events.list.html" class="dropdown-toggle" data-toggle="dropdown">Events<b class="caret"></b></a>
 				<ul class="dropdown-menu ">
-					<li><a href="Consumer.html#event:replyError">Consumer#event:replyError</a></li><li><a href="module-lib_consumer-Consumer.html#event:ackError">lib/consumer~Consumer#event:ackError</a></li><li><a href="module-lib_consumer-Consumer.html#event:connect">lib/consumer~Consumer#event:connect</a></li><li><a href="module-lib_consumer-Consumer.html#event:error">lib/consumer~Consumer#event:error</a></li><li><a href="module-lib_consumer-Consumer.html#event:handlerError">lib/consumer~Consumer#event:handlerError</a></li><li><a href="module-lib_consumer-Consumer.html#event:nackError">lib/consumer~Consumer#event:nackError</a></li><li><a href="module-lib_consumer-Consumer.html#event:rejectError">lib/consumer~Consumer#event:rejectError</a></li><li><a href="module-lib_consumer-Consumer.html#event:sendReply">lib/consumer~Consumer#event:sendReply</a></li>
+					<li><a href="Consumer.html#event:replyError">Consumer#event:replyError</a></li><li><a href="module-lib_reply-consumer-ReplyConsumer.html#event:close">lib/reply-consumer~ReplyConsumer#event:close</a></li><li><a href="module-lib_reply-consumer-ReplyConsumer.html#event:connect">lib/reply-consumer~ReplyConsumer#event:connect</a></li><li><a href="module-lib_reply-consumer-ReplyConsumer.html#event:error">lib/reply-consumer~ReplyConsumer#event:error</a></li><li><a href="module-lib_reply-consumer-ReplyConsumer.html#event:handleReply">lib/reply-consumer~ReplyConsumer#event:handleReply</a></li><li><a href="module-lib_reply-consumer-ReplyConsumer.html#event:unhandledReply">lib/reply-consumer~ReplyConsumer#event:unhandledReply</a></li><li><a href="module-lib_topic-consumer-TopicConsumer.html#event:ackError">lib/topic-consumer~TopicConsumer#event:ackError</a></li><li><a href="module-lib_topic-consumer-TopicConsumer.html#event:close">lib/topic-consumer~TopicConsumer#event:close</a></li><li><a href="module-lib_topic-consumer-TopicConsumer.html#event:connect">lib/topic-consumer~TopicConsumer#event:connect</a></li><li><a href="module-lib_topic-consumer-TopicConsumer.html#event:error">lib/topic-consumer~TopicConsumer#event:error</a></li><li><a href="module-lib_topic-consumer-TopicConsumer.html#event:handlerError">lib/topic-consumer~TopicConsumer#event:handlerError</a></li><li><a href="module-lib_topic-consumer-TopicConsumer.html#event:nackError">lib/topic-consumer~TopicConsumer#event:nackError</a></li><li><a href="module-lib_topic-consumer-TopicConsumer.html#event:rejectError">lib/topic-consumer~TopicConsumer#event:rejectError</a></li><li><a href="module-lib_topic-consumer-TopicConsumer.html#event:sendReply">lib/topic-consumer~TopicConsumer#event:sendReply</a></li>
 				</ul>
 			</li>
 			
@@ -149,10 +149,13 @@
         <h3 class="subsection-title">Classes</h3>
 
         <dl>
-            <dt><a href="module-lib_consumer-Consumer.html">Consumer</a></dt>
+            <dt><a href="module-lib_postmaster-general-PostmasterGeneral.html">PostmasterGeneral</a></dt>
             <dd></dd>
         
-            <dt><a href="module-lib_postmaster-general-PostmasterGeneral.html">PostmasterGeneral</a></dt>
+            <dt><a href="module-lib_reply-consumer-ReplyConsumer.html">ReplyConsumer</a></dt>
+            <dd></dd>
+        
+            <dt><a href="module-lib_topic-consumer-TopicConsumer.html">TopicConsumer</a></dt>
             <dd></dd>
         </dl>
     
@@ -407,6 +410,691 @@
             
 <hr>
 <dt>
+    <h4 class="name" id="event:close">close</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        Fired when the consumer has closed it's connection to RabbitMQ.
+    </div>
+    
+
+    
+
+    
+
+    
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
+    <h4 class="name" id="event:connect">connect</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        Fired when the consumer has finished connecting to RabbitMQ.
+    </div>
+    
+
+    
+
+    
+
+    
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
+    <h4 class="name" id="event:error">error</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        Fired when the consumer is unable to establish a connection to RabbitMQ.
+    </div>
+    
+
+    
+
+    
+        <h5>Type: 
+<span class="param-type">object</span>
+
+
+</h5>
+    
+
+    
+    
+
+    
+<dl class="details">
+    
+
+    <h5 class="subsection-title">Properties:</h5>
+
+    <dl>
+
+<table class="props table table-striped">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>err</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">error</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The error.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>name</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The name of the channel.</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+</dl>
+
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
+    <h4 class="name" id="event:handleReply">handleReply</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        Fired when a reply is received and ready to be processed.
+    </div>
+    
+
+    
+
+    
+        <h5>Type: 
+<span class="param-type">object</span>
+
+
+</h5>
+    
+
+    
+    
+
+    
+<dl class="details">
+    
+
+    <h5 class="subsection-title">Properties:</h5>
+
+    <dl>
+
+<table class="props table table-striped">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Argument</th>
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>correlationId</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">The correlationId of the response.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>body</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">The body of the response.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>err</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">error</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">An optional error returned by the response.</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+</dl>
+
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
+    <h4 class="name" id="event:unhandledReply">unhandledReply</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        Fired when the consumer receieves a reply that it didn't expect.
+    </div>
+    
+
+    
+
+    
+        <h5>Type: 
+<span class="param-type">object</span>
+
+
+</h5>
+    
+
+    
+    
+
+    
+<dl class="details">
+    
+
+    <h5 class="subsection-title">Properties:</h5>
+
+    <dl>
+
+<table class="props table table-striped">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>correlationId</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The correlationId of the response.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>body</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The body of the response.</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+</dl>
+
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
     <h4 class="name" id="event:ackError">ackError</h4>
     
     
@@ -592,7 +1280,7 @@
             
 <hr>
 <dt>
-    <h4 class="name" id="event:connect">connect</h4>
+    <h4 class="name" id="event:close">close</h4>
     
     
 </dt>
@@ -1691,7 +2379,7 @@
 <span class="jsdoc-message">
 	Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
 	
-		on 2018-01-08T12:37:04-05:00
+		on 2018-01-08T13:36:55-05:00
 	
 	using the <a href="https://github.com/docstrap/docstrap">DocStrap template</a>.
 </span>

@@ -4,7 +4,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width">
-	<title>Documentation Modules</title>
+	<title>Documentation Class: TopicConsumer</title>
 
 	<!--[if lt IE 9]>
 	<script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
@@ -79,14 +79,18 @@
 		<div id="main">
 			
 
-	<h1 class="page-title">Modules</h1>
+	<h1 class="page-title">Class: TopicConsumer</h1>
 <section>
 
 <header>
     
         <h2>
+            <span class="ancestors"><a href="module-lib_topic-consumer.html">lib/topic-consumer</a>~</span>
         
+        TopicConsumer
         </h2>
+        
+            <div class="class-description">Class representing a RabbitMQ consumer.</div>
         
     
 </header>
@@ -96,88 +100,9 @@
     <div class="container-overview">
     
         
-
-        
-<dl class="details">
-    
-
-	
-
-	
-
-	
-
-    
-
-    
-
-    
-
-    
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-        
-    
-    </div>
-
-    
-
-    
-
-    
-        <h3 class="subsection-title">Classes</h3>
-
-        <dl>
-            <dt><a href="module-lib_postmaster-general-PostmasterGeneral.html">PostmasterGeneral</a></dt>
-            <dd></dd>
-        
-            <dt><a href="module-lib_reply-consumer-ReplyConsumer.html">ReplyConsumer</a></dt>
-            <dd></dd>
-        
-            <dt><a href="module-lib_topic-consumer-TopicConsumer.html">TopicConsumer</a></dt>
-            <dd></dd>
-        </dl>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-        <h3 class="subsection-title">Events</h3>
-
-        <dl>
-            
 <hr>
 <dt>
-    <h4 class="name" id="event:replyError">replyError</h4>
+    <h4 class="name" id="TopicConsumer"><span class="type-signature"></span>new TopicConsumer(connection, topic, callback, options)</h4>
     
     
 </dt>
@@ -185,32 +110,20 @@
 
     
     <div class="description">
-        ACK error event.
+        Constructs a TopicConsumer.
     </div>
     
 
     
 
     
-        <h5>Type: 
-<span class="param-type">object</span>
-
-
-</h5>
-    
 
     
     
+        <h5>Parameters:</h5>
+        
 
-    
-<dl class="details">
-    
-
-    <h5 class="subsection-title">Properties:</h5>
-
-    <dl>
-
-<table class="props table table-striped">
+<table class="params table table-striped">
     <thead>
     <tr>
         
@@ -228,6 +141,30 @@
     </thead>
 
     <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>connection</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The amqp-connection-manager connection object.</td>
+        </tr>
+
     
 
         <tr>
@@ -249,20 +186,20 @@
 
             
 
-            <td class="description last">The message's routing key.</td>
+            <td class="description last">The topic to consume.</td>
         </tr>
 
     
 
         <tr>
             
-                <td class="name"><code>messageId</code></td>
+                <td class="name"><code>callback</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">string</span>
+<span class="param-type">function</span>
 
 
 
@@ -273,20 +210,20 @@
 
             
 
-            <td class="description last">The unique id of the message.</td>
+            <td class="description last">The callback to call when a message is processed.</td>
         </tr>
 
     
 
         <tr>
             
-                <td class="name"><code>correlationId</code></td>
+                <td class="name"><code>options</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">string</span>
+<span class="param-type">object</span>
 
 
 
@@ -297,136 +234,13 @@
 
             
 
-            <td class="description last">The correlation id of the message.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>replyTo</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">The return address of the message.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>err</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">The error message.</td>
+            <td class="description last">Queue, exchange, and binding options.</td>
         </tr>
 
     
     </tbody>
 </table>
-</dl>
 
-    
-
-	
-
-	
-
-	
-
-    
-
-    
-
-    
-
-    
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dd>
-
-        
-            
-<hr>
-<dt>
-    <h4 class="name" id="event:close">close</h4>
-    
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        Fired when the consumer has closed it's connection to RabbitMQ.
-    </div>
-    
-
-    
-
-    
-
-    
     
 
     
@@ -484,11 +298,29 @@
     
 </dd>
 
-        
+    
+    </div>
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+        <h3 class="subsection-title">Methods</h3>
+
+        <dl>
             
 <hr>
 <dt>
-    <h4 class="name" id="event:connect">connect</h4>
+    <h4 class="name" id="ack"><span class="type-signature"></span>ack(msg)</h4>
     
     
 </dt>
@@ -496,7 +328,7 @@
 
     
     <div class="description">
-        Fired when the consumer has finished connecting to RabbitMQ.
+        Called to acknowledge a message.
     </div>
     
 
@@ -506,100 +338,10 @@
 
     
     
-
-    
-<dl class="details">
-    
-
-	
-
-	
-
-	
-
-    
-
-    
-
-    
-
-    
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dd>
-
+        <h5>Parameters:</h5>
         
-            
-<hr>
-<dt>
-    <h4 class="name" id="event:error">error</h4>
-    
-    
-</dt>
-<dd>
 
-    
-    <div class="description">
-        Fired when the consumer is unable to establish a connection to RabbitMQ.
-    </div>
-    
-
-    
-
-    
-        <h5>Type: 
-<span class="param-type">object</span>
-
-
-</h5>
-    
-
-    
-    
-
-    
-<dl class="details">
-    
-
-    <h5 class="subsection-title">Properties:</h5>
-
-    <dl>
-
-<table class="props table table-striped">
+<table class="params table table-striped">
     <thead>
     <tr>
         
@@ -621,13 +363,13 @@
 
         <tr>
             
-                <td class="name"><code>err</code></td>
+                <td class="name"><code>msg</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">error</span>
+<span class="param-type">object</span>
 
 
 
@@ -638,38 +380,619 @@
 
             
 
-            <td class="description last">The error.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>name</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">The name of the channel.</td>
+            <td class="description last">The RabbitMQ message to acknowledge.</td>
         </tr>
 
     
     </tbody>
 </table>
+
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
 </dl>
 
+
+    
+
+    
+    <h5>Fires:</h5>
+    <ul>
+        <li><a href="module-lib_topic-consumer-TopicConsumer.html#event:ackError">module:lib/topic-consumer~TopicConsumer#event:ackError</a></li>
+    </ul>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
+    <h4 class="name" id="close"><span class="type-signature"></span>close()</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        Closes the underlying channel.
+    </div>
+    
+
+    
+
+    
+
+    
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <h5>Returns:</h5>
+    
+            
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">promise</span>
+
+
+
+    </dd>
+</dl>
+
+
+        
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
+    <h4 class="name" id="handleMessage"><span class="type-signature">&lt;async> </span>handleMessage(msg)</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        Called to handle a consumed message.
+    </div>
+    
+
+    
+
+    
+
+    
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>msg</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The RabbitMQ message data.</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+    <h5>Fires:</h5>
+    <ul>
+        <li><a href="module-lib_topic-consumer-TopicConsumer.html#event:sendReply">module:lib/topic-consumer~TopicConsumer#event:sendReply</a></li>
+    
+        <li><a href="module-lib_topic-consumer-TopicConsumer.html#event:handlerError">module:lib/topic-consumer~TopicConsumer#event:handlerError</a></li>
+    </ul>
+    
+
+    
+
+    
+
+    
+
+    
+    <h5>Returns:</h5>
+    
+            
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">promise</span>
+
+
+
+    </dd>
+</dl>
+
+
+        
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
+    <h4 class="name" id="nack"><span class="type-signature"></span>nack(msg)</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        Called to nack a message without requeuing.
+    </div>
+    
+
+    
+
+    
+
+    
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>msg</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The RabbitMQ message to acknowledge.</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+    <h5>Fires:</h5>
+    <ul>
+        <li><a href="module-lib_topic-consumer-TopicConsumer.html#event:nackError">module:lib/topic-consumer~TopicConsumer#event:nackError</a></li>
+    </ul>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
+    <h4 class="name" id="reject"><span class="type-signature"></span>reject(msg)</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        Called to reject a message, sending back to the queue for processing by another consumer.
+    </div>
+    
+
+    
+
+    
+
+    
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>msg</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The RabbitMQ message to acknowledge.</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+    <h5>Fires:</h5>
+    <ul>
+        <li><a href="module-lib_topic-consumer-TopicConsumer.html#event:rejectError">module:lib/topic-consumer~TopicConsumer#event:rejectError</a></li>
+    </ul>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
+    <h4 class="name" id="resetHandlerTimings"><span class="type-signature"></span>resetHandlerTimings()</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        Resets the handler timings to prevent unbounded accumulation of stale data.
+    </div>
+    
+
+    
+
+    
+
+    
+    
+
+    
+<dl class="details">
     
 
 	
@@ -727,7 +1050,7 @@
             
 <hr>
 <dt>
-    <h4 class="name" id="event:handleReply">handleReply</h4>
+    <h4 class="name" id="setHandlerTiming"><span class="type-signature"></span>setHandlerTiming(start)</h4>
     
     
 </dt>
@@ -735,32 +1058,20 @@
 
     
     <div class="description">
-        Fired when a reply is received and ready to be processed.
+        Updates the timing data for message handler callbacks.
     </div>
     
 
     
 
     
-        <h5>Type: 
-<span class="param-type">object</span>
-
-
-</h5>
-    
 
     
     
+        <h5>Parameters:</h5>
+        
 
-    
-<dl class="details">
-    
-
-    <h5 class="subsection-title">Properties:</h5>
-
-    <dl>
-
-<table class="props table table-striped">
+<table class="params table table-striped">
     <thead>
     <tr>
         
@@ -769,8 +1080,6 @@
 
         <th>Type</th>
 
-        
-        <th>Argument</th>
         
 
         
@@ -784,13 +1093,13 @@
 
         <tr>
             
-                <td class="name"><code>correlationId</code></td>
+                <td class="name"><code>start</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">object</span>
+<span class="param-type">number</span>
 
 
 
@@ -798,85 +1107,20 @@
             </td>
 
             
-                <td class="attributes">
-                
-
-                
-                </td>
-            
 
             
 
-            <td class="description last">The correlationId of the response.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>body</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">object</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">The body of the response.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>err</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">error</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">An optional error returned by the response.</td>
+            <td class="description last">The time at which the handler started execution.</td>
         </tr>
 
     
     </tbody>
 </table>
-</dl>
 
+    
+
+    
+<dl class="details">
     
 
 	
@@ -934,7 +1178,7 @@
             
 <hr>
 <dt>
-    <h4 class="name" id="event:unhandledReply">unhandledReply</h4>
+    <h4 class="name" id="startConsuming"><span class="type-signature"></span>startConsuming()</h4>
     
     
 </dt>
@@ -942,18 +1186,12 @@
 
     
     <div class="description">
-        Fired when the consumer receieves a reply that it didn't expect.
+        Called to start consuming from the queue.
     </div>
     
 
     
 
-    
-        <h5>Type: 
-<span class="param-type">object</span>
-
-
-</h5>
     
 
     
@@ -963,83 +1201,6 @@
 <dl class="details">
     
 
-    <h5 class="subsection-title">Properties:</h5>
-
-    <dl>
-
-<table class="props table table-striped">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>correlationId</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">object</span>
-
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">The correlationId of the response.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>body</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">object</span>
-
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">The body of the response.</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-</dl>
-
-    
-
 	
 
 	
@@ -1087,11 +1248,137 @@
     
 
     
+    <h5>Returns:</h5>
+    
+            
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">promise</span>
+
+
+
+    </dd>
+</dl>
+
+
+        
 
     
 </dd>
 
         
+            
+<hr>
+<dt>
+    <h4 class="name" id="stopConsuming"><span class="type-signature">&lt;async> </span>stopConsuming()</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        Called to stop consuming from the queue.
+    </div>
+    
+
+    
+
+    
+
+    
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <h5>Returns:</h5>
+    
+            
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">promise</span>
+
+
+
+    </dd>
+</dl>
+
+
+        
+
+    
+</dd>
+
+        </dl>
+    
+
+    
+
+    
+        <h3 class="subsection-title">Events</h3>
+
+        <dl>
             
 <hr>
 <dt>
