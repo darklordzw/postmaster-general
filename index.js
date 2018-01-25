@@ -1,5 +1,3 @@
-import { open } from 'fs';
-
 'use strict';
 
 /**
@@ -10,8 +8,6 @@ import { open } from 'fs';
 const EventEmitter = require('events');
 const _ = require('lodash');
 const Transport = require('postmaster-general-core').Transport;
-const errors = require('postmaster-general-core').errors;
-const defaults = require('./defaults');
 
 /**
  * The postmaster-general microservice messaging library.
@@ -48,6 +44,21 @@ class PostmasterGeneral extends EventEmitter {
 			fafListener: options.fafListenerTransport,
 			rpcListener: options.rpcListenerTransport
 		};
+	}
+
+	/**
+	 * Accessor property that returns timing data for all transports.
+	 */
+	get handlerTimings() {
+		const handlerTimings = {};
+
+		for (const key of Object.keys(this.transports)) {
+			if (this.transports[key]) {
+				Object.assign(handlerTimings, this.transports[key].timings);
+			}
+		}
+
+		return handlerTimings;
 	}
 
 	/**
