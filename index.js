@@ -54,6 +54,14 @@ class PostmasterGeneral extends EventEmitter {
 		if (options.rpcListenerTransport) {
 			this.transports.rpcListener = options.rpcListenerTransport;
 		}
+
+		for (const key of Object.keys(this.transports)) {
+			if (this.transports[key]) {
+				this.transports[key].on('error', (err) => this.emit('error', err));
+				this.transports[key].on('disconnected', () => this.emit('disconnected', key));
+				this.transports[key].on('reconnected', () => this.emit('reconnected', key));
+			}
+		}
 	}
 
 	/**

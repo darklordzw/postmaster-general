@@ -52,6 +52,21 @@ describe('postmaster-general', () => {
 			}
 			throw new Error('Failed to catch invalid input.');
 		});
+		it('should properly handle transport disconnect events', (done) => {
+			const postmaster = new PostmasterGeneral({ requestTransport: new Transport() });
+			postmaster.on('disconnected', () => done());
+			postmaster.transports.request.emit('disconnected');
+		});
+		it('should properly handle transport reconnect events', (done) => {
+			const postmaster = new PostmasterGeneral({ requestTransport: new Transport() });
+			postmaster.on('reconnected', () => done());
+			postmaster.transports.request.emit('reconnected');
+		});
+		it('should properly handle transport error events', (done) => {
+			const postmaster = new PostmasterGeneral({ requestTransport: new Transport() });
+			postmaster.on('error', () => done());
+			postmaster.transports.request.emit('error');
+		});
 	});
 
 	describe('handlerTimings:', () => {
