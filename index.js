@@ -7,6 +7,7 @@
 
 const EventEmitter = require('events');
 const _ = require('lodash');
+const errors = require('postmaster-general-core').errors;
 const Transport = require('postmaster-general-core').Transport;
 
 /**
@@ -282,4 +283,7 @@ class PostmasterGeneral extends EventEmitter {
 	}
 }
 
-module.exports = PostmasterGeneral;
+module.exports = {
+	PostmasterGeneral,
+	errors
+};
