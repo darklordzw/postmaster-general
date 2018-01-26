@@ -71,470 +71,400 @@ describe('postmaster-general', () => {
 		});
 	});
 
-	// describe('connect:', () => {
-	// 	let postmaster;
-	
-	// 	beforeEach(() => {
-	// 		postmaster = new PostmasterGeneral({ logLevel: 'off', shutdownTimeout: 1000 });
-	// 	});
-	
-	// 	afterEach(async () => {
-	// 		try {
-	// 			if (postmaster._connection) {
-	// 				await postmaster.shutdown();
-	// 			}
-	// 		} catch (err) {}
-	// 	});
-	
-	// 	it('should resolve when successfully connected', async () => {
-	// 		await postmaster.connect();
-	// 		expect(postmaster._connection).to.not.be.null();
-	// 		await postmaster._channels.topology.checkExchange(postmaster._defaultExchange.name);
-	// 	});
-	
-	// 	it('should reject if unable to connect', async () => {
-	// 		postmaster._url = 'bad url';
-	// 		try {
-	// 			await postmaster.connect();
-	// 		} catch (err) {
-	// 			return;
-	// 		}
-	// 		throw new Error('connect() failed to reject when unable to connect!');
-	// 	}).timeout(5000);
-	
-	// 	it('should set the _createChannel function', async () => {
-	// 		expect(postmaster._createChannel).to.not.exist();
-	// 		await postmaster.connect();
-	// 		expect(postmaster._createChannel).to.exist();
-	// 	});
-	
-	// 	it('should properly create all channels', async () => {
-	// 		postmaster._channels.should.be.empty();
-	// 		await postmaster.connect();
-	// 		postmaster._channels.should.not.be.empty();
-	// 		expect(postmaster._channels.publish).to.exist();
-	// 		expect(postmaster._channels.replyPublish).to.exist();
-	// 		expect(postmaster._channels.topology).to.exist();
-	// 		expect(postmaster._channels.consumers).to.exist();
-	// 		expect(postmaster._channels.consumers[postmaster._topology.queues.reply.name]).to.exist();
-	// 	});
-	
-	// 	it('should try to assert topology', async () => {
-	// 		const spy = sinon.spy(postmaster._assertTopology);
-	// 		await postmaster.connect();
-	// 		spy.should.have.been.calledOnce; // eslint-disable-line no-unused-expressions
-	// 	});
-	
-	// 	it('should close existing connections before reconnecting', async () => {
-	// 		await postmaster.connect();
-	// 		const spy = sinon.spy(postmaster._connection.close);
-	// 		await postmaster.connect();
-	// 		spy.should.have.been.calledOnce; // eslint-disable-line no-unused-expressions
-	// 	});
-	
-	// 	it('should reconnect if the connection is lost due to channel error', async () => {
-	// 		await postmaster.connect();
-	// 		try {
-	// 			await postmaster._channels.topology.checkExchange('invalid exchange');
-	// 		} catch (err) {}
-	// 		await Promise.delay(1000);
-	// 		expect(postmaster._connection).to.not.be.null();
-	// 		await postmaster._channels.topology.checkExchange(postmaster._defaultExchange.name);
-	// 	}).timeout(5000);
-	
-	// 	it('should emit an error event if the connection is lost and cannot be recovered', async () => {
-	// 		await postmaster.connect();
-	// 		postmaster._url = 'bad url';
-	// 		const onError = (err) => {
-	// 			expect(err.message).to.exist();
-	// 		};
-	// 		const spy = sinon.spy(onError);
-	// 		postmaster.on('error', onError);
-	// 		try {
-	// 			await postmaster._channels.topology.checkExchange('invalid exchange');
-	// 		} catch (err) {}
-	// 		await Promise.delay(3000);
-	// 		spy.should.have.been.calledOnce; // eslint-disable-line no-unused-expressions
-	// 	}).timeout(5000);
-	// });
-	
-	// describe('shutdown:', () => {
-	// 	let postmaster;
-	
-	// 	beforeEach(() => {
-	// 		postmaster = new PostmasterGeneral({ logLevel: 'off' });
-	// 	});
-	
-	// 	afterEach(async () => {
-	// 		try {
-	// 			if (postmaster._connection) {
-	// 				await postmaster.shutdown();
-	// 			}
-	// 		} catch (err) {}
-	// 	});
-	
-	// 	it('should resolve when successfully shutdown', async () => {
-	// 		await postmaster.connect();
-	// 		await postmaster.shutdown();
-	// 	});
-	
-	// 	it('should stop consuming prior to shutdown', async () => {
-	// 		await postmaster.connect();
-	// 		const spy = sinon.spy(postmaster.stopConsuming);
-	// 		await postmaster.shutdown();
-	// 		spy.should.have.been.calledOnce; // eslint-disable-line no-unused-expressions
-	// 	});
-	
-	// 	it('should retry if called while outstanding messages are processing', async () => {
-	// 		await postmaster.connect();
-	// 		postmaster._replyHandlers.test = 'dummy value';
-	// 		const shutdownPromise = postmaster.shutdown();
-	// 		expect(postmaster._connection).to.not.be.null();
-	// 		await postmaster._channels.topology.checkExchange(postmaster._defaultExchange.name);
-	// 		delete postmaster._replyHandlers.test;
-	// 		await Promise.delay(1000);
-	// 		try {
-	// 			await postmaster._channels.topology.checkExchange(postmaster._defaultExchange.name);
-	// 		} catch (err) {
-	// 			return shutdownPromise;
-	// 		}
-	// 		throw new Error('Failed to retry shutdown!');
-	// 	}).timeout(5000);
-	// });
-	
-	// describe('assertExchange:', () => {
-	// 	let postmaster;
-	
-	// 	beforeEach(() => {
-	// 		postmaster = new PostmasterGeneral({ logLevel: 'off' });
-	// 	});
-	
-	// 	afterEach(async () => {
-	// 		try {
-	// 			if (postmaster._connection) {
-	// 				await postmaster.shutdown();
-	// 			}
-	// 		} catch (err) {}
-	// 	});
-	
-	// 	it('should assert the exchange and store the topology entry', async () => {
-	// 		await postmaster.connect();
-	// 		expect(postmaster._topology.exchanges.aeTest).to.not.exist();
-	// 		await postmaster.assertExchange('aeTest', 'topic');
-	// 		expect(postmaster._topology.exchanges.aeTest).to.exist();
-	// 	});
-	// });
-	
-	// describe('assertQueue:', () => {
-	// 	let postmaster;
-	
-	// 	beforeEach(() => {
-	// 		postmaster = new PostmasterGeneral({ logLevel: 'off' });
-	// 	});
-	
-	// 	afterEach(async () => {
-	// 		try {
-	// 			if (postmaster._connection) {
-	// 				await postmaster.shutdown();
-	// 			}
-	// 		} catch (err) {}
-	// 	});
-	
-	// 	it('should assert the queue and store the topology entry', async () => {
-	// 		await postmaster.connect();
-	// 		expect(postmaster._topology.queues.aqTest).to.not.exist();
-	// 		await postmaster.assertQueue('aqTest');
-	// 		expect(postmaster._topology.queues.aqTest).to.exist();
-	// 	});
-	// });
-	
-	// describe('assertBinding:', () => {
-	// 	let postmaster;
-	
-	// 	beforeEach(() => {
-	// 		postmaster = new PostmasterGeneral({ logLevel: 'off' });
-	// 	});
-	
-	// 	afterEach(async () => {
-	// 		try {
-	// 			if (postmaster._connection) {
-	// 				await postmaster.shutdown();
-	// 			}
-	// 		} catch (err) {}
-	// 	});
-	
-	// 	it('should assert the binding and store the topology entry', async () => {
-	// 		await postmaster.connect();
-	// 		expect(postmaster._topology.bindings.aqTest_aeTest).to.not.exist();
-	// 		await postmaster.assertBinding('aqTest', 'aeTest', 'test.topic');
-	// 		expect(postmaster._topology.bindings.aqTest_aeTest).to.exist();
-	// 	});
-	// });
-	
-	// describe('assertTopology:', () => {
-	// 	let postmaster;
-	
-	// 	beforeEach(() => {
-	// 		postmaster = new PostmasterGeneral({ logLevel: 'off' });
-	// 	});
-	
-	// 	afterEach(async () => {
-	// 		try {
-	// 			if (postmaster._connection) {
-	// 				await postmaster.shutdown();
-	// 			}
-	// 		} catch (err) {}
-	// 	});
-	
-	// 	it('should assert predefined exchanges', async () => {
-	// 		postmaster._topology.exchanges.atExchange = { name: 'atExchange' };
-	// 		const spy = sinon.spy(postmaster.assertExchange);
-	// 		await postmaster.connect();
-	// 		spy.should.have.been.called; // eslint-disable-line no-unused-expressions
-	// 		await postmaster._channels.topology.checkExchange('atExchange');
-	// 	});
-	
-	// 	it('should assert predefined queues', async () => {
-	// 		postmaster._topology.queues.atQueue = { name: 'atQueue' };
-	// 		const spy = sinon.spy(postmaster.assertQueue);
-	// 		await postmaster.connect();
-	// 		spy.should.have.been.called; // eslint-disable-line no-unused-expressions
-	// 		await postmaster._channels.topology.checkQueue('atQueue');
-	// 	});
-	
-	// 	it('should assert predefined bindings', async () => {
-	// 		postmaster._topology.bindings.atQueue_atExchange = { queue: 'atQueue', exchange: 'atExchange', topic: 'atTestTopic' }; // eslint-disable-line camelcase
-	// 		const spy = sinon.spy(postmaster.assertBinding);
-	// 		await postmaster.connect();
-	// 		spy.should.have.been.called; // eslint-disable-line no-unused-expressions
-	// 	});
-	// });
-	
-	// describe('startConsuming:', () => {
-	// 	let postmaster;
-	
-	// 	beforeEach(() => {
-	// 		postmaster = new PostmasterGeneral({ logLevel: 'off' });
-	// 	});
-	
-	// 	afterEach(async () => {
-	// 		try {
-	// 			if (postmaster._connection) {
-	// 				await postmaster.shutdown();
-	// 			}
-	// 		} catch (err) {}
-	// 	});
-	
-	// 	it('should reset handler timings', async () => {
-	// 		await postmaster.connect();
-	// 		const spy = sinon.spy(postmaster._resetHandlerTimings);
-	// 		await postmaster.startConsuming();
-	// 		spy.should.have.been.called; // eslint-disable-line no-unused-expressions
-	// 	});
-	
-	// 	it('should start consuming on the reply queue', async () => {
-	// 		await postmaster.connect();
-	// 		const spy = sinon.spy(postmaster._channels.consumers[postmaster._topology.queues.reply.name].consume);
-	// 		expect(postmaster._replyConsumerTag).to.not.exist();
-	// 		await postmaster.startConsuming();
-	// 		spy.should.have.been.called; // eslint-disable-line no-unused-expressions
-	// 		expect(postmaster._replyConsumerTag).to.exist();
-	// 	});
-	
-	// 	it('should start consuming on the listener queues', async () => {
-	// 		await postmaster.connect();
-	// 		await postmaster.addRabbitMQListener('sctest', () => {
-	// 			return Promise.resolve();
-	// 		});
-	// 		const spy = sinon.spy(postmaster._channels.consumers['postmaster.queue.sctest'].consume);
-	// 		expect(postmaster._handlers.sctest.consumerTag).to.not.exist();
-	// 		await postmaster.startConsuming();
-	// 		spy.should.have.been.called; // eslint-disable-line no-unused-expressions
-	// 		expect(postmaster._handlers.sctest.consumerTag).to.exist();
-	// 	});
-	// });
-	
-	// describe('stopConsuming:', () => {
-	// 	let postmaster;
-	
-	// 	beforeEach(() => {
-	// 		postmaster = new PostmasterGeneral({ logLevel: 'off' });
-	// 	});
-	
-	// 	afterEach(async () => {
-	// 		try {
-	// 			if (postmaster._connection) {
-	// 				await postmaster.shutdown();
-	// 			}
-	// 		} catch (err) {}
-	// 	});
-	
-	// 	it('should reset handler timings', async () => {
-	// 		await postmaster.connect();
-	// 		await postmaster.startConsuming();
-	// 		const spy = sinon.spy(postmaster._resetHandlerTimings);
-	// 		await postmaster.stopConsuming();
-	// 		spy.should.have.been.called; // eslint-disable-line no-unused-expressions
-	// 	});
-	
-	// 	it('should stop consuming on the reply queue', async () => {
-	// 		await postmaster.connect();
-	// 		await postmaster.startConsuming();
-	// 		const spy = sinon.spy(postmaster._channels.consumers[postmaster._topology.queues.reply.name].cancel);
-	// 		expect(postmaster._replyConsumerTag).to.exist();
-	// 		await postmaster.stopConsuming();
-	// 		spy.should.have.been.called; // eslint-disable-line no-unused-expressions
-	// 		expect(postmaster._replyConsumerTag).to.not.exist();
-	// 	});
-	
-	// 	it('should stop consuming on the listener queues', async () => {
-	// 		await postmaster.connect();
-	// 		await postmaster.addRabbitMQListener('sctest', () => {
-	// 			return Promise.resolve();
-	// 		});
-	// 		await postmaster.startConsuming();
-	// 		const spy = sinon.spy(postmaster._channels.consumers['postmaster.queue.sctest'].cancel);
-	// 		expect(postmaster._handlers.sctest.consumerTag).to.exist();
-	// 		await postmaster.stopConsuming();
-	// 		spy.should.have.been.called; // eslint-disable-line no-unused-expressions
-	// 		expect(postmaster._handlers.sctest.consumerTag).to.not.exist();
-	// 	});
-	// });
-	
-	// describe('removeRabbitMQListener:', () => {
-	// 	let postmaster;
-	
-	// 	beforeEach(() => {
-	// 		postmaster = new PostmasterGeneral({ logLevel: 'off' });
-	// 	});
-	
-	// 	afterEach(async () => {
-	// 		try {
-	// 			if (postmaster._connection) {
-	// 				await postmaster.shutdown();
-	// 			}
-	// 		} catch (err) {}
-	// 	});
-	
-	// 	it('should cancel a consumer before removing', async () => {
-	// 		await postmaster.connect();
-	// 		await postmaster.addRabbitMQListener('rltest', async (msg) => {
-	// 			if (msg.data === 'test') {
-	// 				return true;
-	// 			}
-	// 			return false;
-	// 		});
-	// 		await postmaster.startConsuming();
-	// 		const spy = sinon.spy(postmaster._channels.consumers['postmaster.queue.rltest'].cancel);
-	// 		const spy2 = sinon.spy(postmaster._channels.consumers['postmaster.queue.rltest'].close);
-	// 		expect(postmaster._handlers.rltest.consumerTag).to.exist();
-	// 		expect(postmaster._channels.consumers['postmaster.queue.rltest']).to.exist();
-	// 		expect(postmaster._handlers.rltest).to.exist();
-	// 		expect(postmaster._topology.bindings[`postmaster.queue.rltest_${postmaster._defaultExchange.name}`]).to.exist();
-	// 		await postmaster.removeRabbitMQListener('rltest');
-	// 		spy.should.have.been.called; // eslint-disable-line no-unused-expressions
-	// 		spy2.should.have.been.called; // eslint-disable-line no-unused-expressions
-	// 		expect(postmaster._channels.consumers['postmaster.queue.rltest']).to.not.exist();
-	// 		expect(postmaster._handlers.rltest).to.not.exist();
-	// 		expect(postmaster._topology.bindings[`postmaster.queue.rltest_${postmaster._defaultExchange.name}`]).to.not.exist();
-	// 	});
-	// });
-	
-	// describe('publish:', () => {
-	// 	let postmaster;
-	
-	// 	beforeEach(() => {
-	// 		postmaster = new PostmasterGeneral({ logLevel: 'off' });
-	// 	});
-	
-	// 	afterEach(async () => {
-	// 		try {
-	// 			if (postmaster._connection) {
-	// 				await postmaster.shutdown();
-	// 			}
-	// 		} catch (err) {}
-	// 	});
-	
-	// 	it('should send a fire-and-forget message', async () => {
-	// 		await postmaster.connect();
-	// 		let received = false;
-	// 		await postmaster.addRabbitMQListener('pubtest', (msg) => {
-	// 			if (msg.data === 'test') {
-	// 				received = true;
-	// 			}
-	// 			return Promise.resolve();
-	// 		});
-	// 		await postmaster.startConsuming();
-	// 		received.should.be.false();
-	// 		await postmaster.publish('pubtest', { data: 'test' });
-	// 		await Promise.delay(100);
-	// 		received.should.be.true();
-	// 	});
-	
-	// 	it('should resolve even if connection is down', async () => {
-	// 		await postmaster.publish('pubtest', { data: 'test' });
-	// 	}).timeout(5000);
-	
-	// 	it('should hold messages until connection is established', async () => {
-	// 		postmaster._connecting = true;
-	// 		const pubPromise = postmaster.publish('pubtest', { data: 'test' });
-	// 		await postmaster.connect();
-	// 		let received = false;
-	// 		await postmaster.addRabbitMQListener('pubtest', (msg) => {
-	// 			if (msg.data === 'test') {
-	// 				received = true;
-	// 			}
-	// 			return Promise.resolve();
-	// 		});
-	// 		await postmaster.startConsuming();
-	// 		received.should.be.false();
-	// 		await pubPromise;
-	// 		await Promise.delay(100);
-	// 		received.should.be.true();
-	// 	});
-	// });
-	
-	// describe('request:', () => {
-	// 	let postmaster;
-	
-	// 	beforeEach(() => {
-	// 		postmaster = new PostmasterGeneral({ logLevel: 'off' });
-	// 	});
-	
-	// 	afterEach(async () => {
-	// 		try {
-	// 			if (postmaster._connection) {
-	// 				await postmaster.shutdown();
-	// 			}
-	// 		} catch (err) {}
-	// 	});
-	
-	// 	it('should send an RPC message', async () => {
-	// 		await postmaster.connect();
-	// 		await postmaster.addRabbitMQListener('pubtest', async (msg) => {
-	// 			if (msg.data === 'test') {
-	// 				return true;
-	// 			}
-	// 			return false;
-	// 		});
-	// 		await postmaster.startConsuming();
-	// 		const received = await postmaster.request('pubtest', { data: 'test' });
-	// 		received.should.be.true();
-	// 	});
-	
-	// 	it('should hold messages until connection is established', async () => {
-	// 		postmaster._connecting = true;
-	// 		const pubPromise = postmaster.request('pubtest', { data: 'test' });
-	// 		await postmaster.connect();
-	// 		await postmaster.addRabbitMQListener('pubtest', async (msg) => {
-	// 			if (msg.data === 'test') {
-	// 				return true;
-	// 			}
-	// 			return false;
-	// 		});
-	// 		await postmaster.startConsuming();
-	// 		const received = await pubPromise;
-	// 		received.should.be.true();
-	// 	});
-	// });	
+	describe('connect:', () => {
+		it('should reject if no transports were configured', () => {
+			const postmaster = new PostmasterGeneral();
+			return postmaster.connect()
+				.then(() => {
+					throw new Error('Failed to catch invalid input.');
+				})
+				.catch((err) => {
+					if (err.message !== 'No Transports were configured.') {
+						throw err;
+					}
+				});
+		});
+		it('should connect all transports', () => {
+			const transport1 = new Transport();
+			const transport2 = new Transport();
+			const spy1 = sandbox.stub(transport1, 'connect');
+			const spy2 = sandbox.stub(transport2, 'connect');
+
+			const postmaster = new PostmasterGeneral({ publishTransport: transport1, rpcListenerTransport: transport2 });
+			return postmaster.connect()
+				.then(() => {
+					spy1.calledOnce.should.be.true();
+					spy2.calledOnce.should.be.true();
+				});
+		});
+	});
+
+	describe('disconnect:', () => {
+		it('should not reject if no transports were configured', () => {
+			const postmaster = new PostmasterGeneral();
+			return postmaster.disconnect();
+		});
+		it('should disconnect all transports', () => {
+			const transport1 = new Transport();
+			const transport2 = new Transport();
+			const spy1 = sandbox.stub(transport1, 'disconnect');
+			const spy2 = sandbox.stub(transport2, 'disconnect');
+
+			const postmaster = new PostmasterGeneral({ publishTransport: transport1, rpcListenerTransport: transport2 });
+			return postmaster.disconnect()
+				.then(() => {
+					spy1.calledOnce.should.be.true();
+					spy2.calledOnce.should.be.true();
+				});
+		});
+	});
+
+	describe('addRequestListener:', () => {
+		it('should reject if routing key is invalid', () => {
+			const postmaster = new PostmasterGeneral({ rpcListenerTransport: new Transport() });
+			return postmaster.addRequestListener(4444, () => {
+				return Promise.resolve();
+			})
+				.then(() => {
+					throw new Error('Failed to catch invalid input.');
+				})
+				.catch((err) => {
+					if (err.message !== '"routingKey" should be a string.') {
+						throw err;
+					}
+				});
+		});
+		it('should reject if callback is invalid', () => {
+			const postmaster = new PostmasterGeneral({ rpcListenerTransport: new Transport() });
+			return postmaster.addRequestListener('test')
+				.then(() => {
+					throw new Error('Failed to catch invalid input.');
+				})
+				.catch((err) => {
+					if (err.message !== '"callback" should be a function that returns a Promise.') {
+						throw err;
+					}
+				});
+		});
+		it('should reject if no request transport is configured', () => {
+			const postmaster = new PostmasterGeneral({ fafListenerTransport: new Transport() });
+			return postmaster.addRequestListener('test', () => {
+				return Promise.resolve();
+			})
+				.then(() => {
+					throw new Error('Failed to catch invalid input.');
+				})
+				.catch((err) => {
+					if (err.message !== 'Cannot add a new RPC listener, no RPC Transport has been configured.') {
+						throw err;
+					}
+				});
+		});
+		it('should hook up the listener on the correct transport', () => {
+			const transport1 = new Transport();
+			const spy1 = sandbox.stub(transport1, 'addMessageListener');
+
+			const postmaster = new PostmasterGeneral({ rpcListenerTransport: transport1 });
+			return postmaster.addRequestListener('test', () => {
+				return Promise.resolve();
+			})
+				.then(() => {
+					spy1.calledOnce.should.be.true();
+				});
+		});
+	});
+
+	describe('addFireAndForgetListener:', () => {
+		it('should reject if routing key is invalid', () => {
+			const postmaster = new PostmasterGeneral({ fafListenerTransport: new Transport() });
+			return postmaster.addFireAndForgetListener(4444, () => {
+				return Promise.resolve();
+			})
+				.then(() => {
+					throw new Error('Failed to catch invalid input.');
+				})
+				.catch((err) => {
+					if (err.message !== '"routingKey" should be a string.') {
+						throw err;
+					}
+				});
+		});
+		it('should reject if callback is invalid', () => {
+			const postmaster = new PostmasterGeneral({ fafListenerTransport: new Transport() });
+			return postmaster.addFireAndForgetListener('test')
+				.then(() => {
+					throw new Error('Failed to catch invalid input.');
+				})
+				.catch((err) => {
+					if (err.message !== '"callback" should be a function that returns a Promise.') {
+						throw err;
+					}
+				});
+		});
+		it('should reject if no request transport is configured', () => {
+			const postmaster = new PostmasterGeneral({ rpcListenerTransport: new Transport() });
+			return postmaster.addFireAndForgetListener('test', () => {
+				return Promise.resolve();
+			})
+				.then(() => {
+					throw new Error('Failed to catch invalid input.');
+				})
+				.catch((err) => {
+					if (err.message !== 'Cannot add a new fire-and-forget listener, no fire-and-forget Transport has been configured.') {
+						throw err;
+					}
+				});
+		});
+		it('should hook up the listener on the correct transport', () => {
+			const transport1 = new Transport();
+			const spy1 = sandbox.stub(transport1, 'addMessageListener');
+
+			const postmaster = new PostmasterGeneral({ fafListenerTransport: transport1 });
+			return postmaster.addFireAndForgetListener('test', () => {
+				return Promise.resolve();
+			})
+				.then(() => {
+					spy1.calledOnce.should.be.true();
+				});
+		});
+	});
+
+	describe('removeRequestListener:', () => {
+		it('should reject if routing key is invalid', () => {
+			const postmaster = new PostmasterGeneral({ rpcListenerTransport: new Transport() });
+			return postmaster.removeRequestListener(4444, () => {
+				return Promise.resolve();
+			})
+				.then(() => {
+					throw new Error('Failed to catch invalid input.');
+				})
+				.catch((err) => {
+					if (err.message !== '"routingKey" should be a string.') {
+						throw err;
+					}
+				});
+		});
+		it('should reject if no request transport is configured', () => {
+			const postmaster = new PostmasterGeneral({ fafListenerTransport: new Transport() });
+			return postmaster.removeRequestListener('test', () => {
+				return Promise.resolve();
+			})
+				.then(() => {
+					throw new Error('Failed to catch invalid input.');
+				})
+				.catch((err) => {
+					if (err.message !== 'Cannot remove an RPC listener, no RPC Transport has been configured.') {
+						throw err;
+					}
+				});
+		});
+		it('should remove the listener from the correct transport', () => {
+			const transport1 = new Transport();
+			const spy1 = sandbox.stub(transport1, 'removeMessageListener');
+
+			const postmaster = new PostmasterGeneral({ rpcListenerTransport: transport1 });
+			return postmaster.removeRequestListener('test', () => {
+				return Promise.resolve();
+			})
+				.then(() => {
+					spy1.calledOnce.should.be.true();
+				});
+		});
+	});
+
+	describe('removeFireAndForgetListener:', () => {
+		it('should reject if routing key is invalid', () => {
+			const postmaster = new PostmasterGeneral({ fafListenerTransport: new Transport() });
+			return postmaster.removeFireAndForgetListener(4444, () => {
+				return Promise.resolve();
+			})
+				.then(() => {
+					throw new Error('Failed to catch invalid input.');
+				})
+				.catch((err) => {
+					if (err.message !== '"routingKey" should be a string.') {
+						throw err;
+					}
+				});
+		});
+		it('should reject if no request transport is configured', () => {
+			const postmaster = new PostmasterGeneral({ rpcListenerTransport: new Transport() });
+			return postmaster.removeFireAndForgetListener('test', () => {
+				return Promise.resolve();
+			})
+				.then(() => {
+					throw new Error('Failed to catch invalid input.');
+				})
+				.catch((err) => {
+					if (err.message !== 'Cannot remove a fire-and-forget listener, no fire-and-forget Transport has been configured.') {
+						throw err;
+					}
+				});
+		});
+		it('should remove the listener from the correct transport', () => {
+			const transport1 = new Transport();
+			const spy1 = sandbox.stub(transport1, 'removeMessageListener');
+
+			const postmaster = new PostmasterGeneral({ fafListenerTransport: transport1 });
+			return postmaster.removeFireAndForgetListener('test', () => {
+				return Promise.resolve();
+			})
+				.then(() => {
+					spy1.calledOnce.should.be.true();
+				});
+		});
+	});
+
+	describe('listen:', () => {
+		it('should reject if no transports were configured', () => {
+			const postmaster = new PostmasterGeneral();
+			return postmaster.listen()
+				.then(() => {
+					throw new Error('Failed to catch invalid input.');
+				})
+				.catch((err) => {
+					if (err.message !== 'No Transports were configured.') {
+						throw err;
+					}
+				});
+		});
+		it('should listen all listener transports', () => {
+			const transport1 = new Transport();
+			const transport2 = new Transport();
+			const transport3 = new Transport();
+			const spy1 = sandbox.stub(transport1, 'listen');
+			const spy2 = sandbox.stub(transport2, 'listen');
+			const spy3 = sandbox.stub(transport3, 'listen');
+
+			const postmaster = new PostmasterGeneral({ publishTransport: transport1, rpcListenerTransport: transport2, fafListenerTransport: transport3 });
+			return postmaster.listen()
+				.then(() => {
+					spy1.calledOnce.should.be.false();
+					spy2.calledOnce.should.be.true();
+					spy3.calledOnce.should.be.true();
+				});
+		});
+	});
+
+	describe('publish:', () => {
+		it('should reject if routing key is invalid', () => {
+			const postmaster = new PostmasterGeneral({ publishTransport: new Transport() });
+			return postmaster.publish(4444, { testKey: 'testVal' })
+				.then(() => {
+					throw new Error('Failed to catch invalid input.');
+				})
+				.catch((err) => {
+					if (err.message !== '"routingKey" should be a string.') {
+						throw err;
+					}
+				});
+		});
+		it('should reject if correlationId is invalid', () => {
+			const postmaster = new PostmasterGeneral({ publishTransport: new Transport() });
+			return postmaster.publish('test', { testKey: 'testVal' }, { correlationId: 55555 })
+				.then(() => {
+					throw new Error('Failed to catch invalid input.');
+				})
+				.catch((err) => {
+					if (err.message !== '"options.correlationId" should be a string.') {
+						throw err;
+					}
+				});
+		});
+		it('should reject if initiator is invalid', () => {
+			const postmaster = new PostmasterGeneral({ publishTransport: new Transport() });
+			return postmaster.publish('test', { testKey: 'testVal' }, { initiator: 55555 })
+				.then(() => {
+					throw new Error('Failed to catch invalid input.');
+				})
+				.catch((err) => {
+					if (err.message !== '"options.initiator" should be a string.') {
+						throw err;
+					}
+				});
+		});
+		it('should reject if no publish transport is configured', () => {
+			const postmaster = new PostmasterGeneral({ requestTransport: new Transport() });
+			return postmaster.publish('test', { testKey: 'testVal' })
+				.then(() => {
+					throw new Error('Failed to catch invalid input.');
+				})
+				.catch((err) => {
+					if (err.message !== 'Cannot publish message, no publish Transport has been configured.') {
+						throw err;
+					}
+				});
+		});
+		it('should call publish on the correct transport', () => {
+			const transport1 = new Transport();
+			const spy1 = sandbox.stub(transport1, 'publish');
+
+			const postmaster = new PostmasterGeneral({ publishTransport: transport1 });
+			return postmaster.publish('test', { testKey: 'testVal' })
+				.then(() => {
+					spy1.calledOnce.should.be.true();
+				});
+		});
+	});
+
+	describe('request:', () => {
+		it('should reject if routing key is invalid', () => {
+			const postmaster = new PostmasterGeneral({ requestTransport: new Transport() });
+			return postmaster.request(4444, { testKey: 'testVal' })
+				.then(() => {
+					throw new Error('Failed to catch invalid input.');
+				})
+				.catch((err) => {
+					if (err.message !== '"routingKey" should be a string.') {
+						throw err;
+					}
+				});
+		});
+		it('should reject if correlationId is invalid', () => {
+			const postmaster = new PostmasterGeneral({ requestTransport: new Transport() });
+			return postmaster.request('test', { testKey: 'testVal' }, { correlationId: 55555 })
+				.then(() => {
+					throw new Error('Failed to catch invalid input.');
+				})
+				.catch((err) => {
+					if (err.message !== '"options.correlationId" should be a string.') {
+						throw err;
+					}
+				});
+		});
+		it('should reject if initiator is invalid', () => {
+			const postmaster = new PostmasterGeneral({ requestTransport: new Transport() });
+			return postmaster.request('test', { testKey: 'testVal' }, { initiator: 55555 })
+				.then(() => {
+					throw new Error('Failed to catch invalid input.');
+				})
+				.catch((err) => {
+					if (err.message !== '"options.initiator" should be a string.') {
+						throw err;
+					}
+				});
+		});
+		it('should reject if no request transport is configured', () => {
+			const postmaster = new PostmasterGeneral({ publishTransport: new Transport() });
+			return postmaster.request('test', { testKey: 'testVal' })
+				.then(() => {
+					throw new Error('Failed to catch invalid input.');
+				})
+				.catch((err) => {
+					if (err.message !== 'Cannot send request, no request Transport has been configured.') {
+						throw err;
+					}
+				});
+		});
+		it('should call request on the correct transport', () => {
+			const transport1 = new Transport();
+			const spy1 = sandbox.stub(transport1, 'request');
+
+			const postmaster = new PostmasterGeneral({ requestTransport: transport1 });
+			return postmaster.request('test', { testKey: 'testVal' })
+				.then(() => {
+					spy1.calledOnce.should.be.true();
+				});
+		});
+	});
 });

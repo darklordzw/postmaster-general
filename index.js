@@ -87,7 +87,7 @@ class PostmasterGeneral extends EventEmitter {
 		if (promises.length > 0) {
 			return Promise.all(promises);
 		}
-		return Promise.reject(new Error('No Transports were configured!'));
+		return Promise.reject(new Error('No Transports were configured.'));
 	}
 
 	/**
@@ -203,7 +203,7 @@ class PostmasterGeneral extends EventEmitter {
 		const promises = [];
 
 		for (const key of Object.keys(this.transports)) {
-			if (this.transports[key]) {
+			if (this.transports[key] && (key === 'rpcListener' || key === 'fafListener')) {
 				promises.push(this.transports[key].listen());
 			}
 		}
@@ -211,7 +211,7 @@ class PostmasterGeneral extends EventEmitter {
 		if (promises.length > 0) {
 			return Promise.all(promises);
 		}
-		return Promise.reject(new Error('No Transports were configured!'));
+		return Promise.reject(new Error('No Transports were configured.'));
 	}
 
 	/**
