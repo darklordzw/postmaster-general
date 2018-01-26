@@ -25,6 +25,8 @@ class PostmasterGeneral extends EventEmitter {
 	constructor(options) {
 		super();
 
+		options = options || {};
+
 		if (!_.isUndefined(options.publishTransport) && !(options.publishTransport instanceof Transport)) {
 			throw new TypeError('"options.publishTransport" should be a Transport.');
 		}
@@ -38,12 +40,20 @@ class PostmasterGeneral extends EventEmitter {
 			throw new TypeError('"options.rpcListenerTransport" should be a Transport.');
 		}
 
-		this.transports = {
-			publish: options.publishTransport,
-			request: options.requestTransport,
-			fafListener: options.fafListenerTransport,
-			rpcListener: options.rpcListenerTransport
-		};
+		this.transports = {};
+
+		if (options.publishTransport) {
+			this.transports.publish = options.publishTransport;
+		}
+		if (options.requestTransport) {
+			this.transports.request = options.requestTransport;
+		}
+		if (options.fafListenerTransport) {
+			this.transports.fafListener = options.fafListenerTransport;
+		}
+		if (options.rpcListenerTransport) {
+			this.transports.rpcListener = options.rpcListenerTransport;
+		}
 	}
 
 	/**
