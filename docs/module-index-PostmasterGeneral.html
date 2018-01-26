@@ -33,21 +33,14 @@
 			<li class="dropdown">
 				<a href="modules.list.html" class="dropdown-toggle" data-toggle="dropdown">Modules<b class="caret"></b></a>
 				<ul class="dropdown-menu ">
-					<li><a href="module-index.html">index</a></li><li><a href="module-lib_transports_errors.html">lib/transports/errors</a></li><li><a href="module-lib_transports_http.html">lib/transports/http</a></li><li><a href="module-lib_transports_transport.html">lib/transports/transport</a></li>
+					<li><a href="module-index.html">index</a></li>
 				</ul>
 			</li>
 			
 			<li class="dropdown">
 				<a href="classes.list.html" class="dropdown-toggle" data-toggle="dropdown">Classes<b class="caret"></b></a>
 				<ul class="dropdown-menu ">
-					<li><a href="module-index-PostmasterGeneral.html">index~PostmasterGeneral</a></li><li><a href="module-lib_transports_errors-ForbiddenError.html">lib/transports/errors~ForbiddenError</a></li><li><a href="module-lib_transports_errors-InvalidMessageError.html">lib/transports/errors~InvalidMessageError</a></li><li><a href="module-lib_transports_errors-NotFoundError.html">lib/transports/errors~NotFoundError</a></li><li><a href="module-lib_transports_errors-NotImplementedError.html">lib/transports/errors~NotImplementedError</a></li><li><a href="module-lib_transports_errors-RequestError.html">lib/transports/errors~RequestError</a></li><li><a href="module-lib_transports_errors-ResponseError.html">lib/transports/errors~ResponseError</a></li><li><a href="module-lib_transports_errors-ResponseProcessingError.html">lib/transports/errors~ResponseProcessingError</a></li><li><a href="module-lib_transports_errors-TransportDisconnectedError.html">lib/transports/errors~TransportDisconnectedError</a></li><li><a href="module-lib_transports_errors-UnauthorizedError.html">lib/transports/errors~UnauthorizedError</a></li><li><a href="module-lib_transports_transport-Transport.html">lib/transports/transport~Transport</a></li>
-				</ul>
-			</li>
-			
-			<li class="dropdown">
-				<a href="events.list.html" class="dropdown-toggle" data-toggle="dropdown">Events<b class="caret"></b></a>
-				<ul class="dropdown-menu ">
-					<li><a href="index_.html#event:publishError">index#event:publishError</a></li><li><a href="module-lib_transports_transport-Transport.html#event:connectionError">lib/transports/transport~Transport#event:connectionError</a></li><li><a href="module-lib_transports_transport-Transport.html#event:disconnected">lib/transports/transport~Transport#event:disconnected</a></li><li><a href="module-lib_transports_transport-Transport.html#event:reconnected">lib/transports/transport~Transport#event:reconnected</a></li>
+					<li><a href="module-index-PostmasterGeneral.html">index~PostmasterGeneral</a></li>
 				</ul>
 			</li>
 			
@@ -89,6 +82,8 @@
         
         PostmasterGeneral
         </h2>
+        
+            <div class="class-description">The postmaster-general microservice messaging library.</div>
         
     
 </header>
@@ -172,7 +167,171 @@
 
             
 
-            <td class="description last"></td>
+            <td class="description last">Optional settings.
+                <h6 class="method-params-label method-subparams-label">Properties</h6>
+                
+
+<table class="params table table-striped">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Argument</th>
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>publishTransport</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Transport</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">The core Transport object used to send fire-and-forget messages.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>requestTransport</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Transport</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">The core Transport object used to send RPC messages.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>fafListenerTransport</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Transport</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">The core Transport object used to receive fire-and-forget messages.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>rpcListenerTransport</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Transport</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">The core Transport object used to listen to RPC messages.</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
         </tr>
 
     
@@ -240,6 +399,17 @@
     </div>
 
     
+        <h3 class="subsection-title">Extends</h3>
+
+        
+
+
+    <ul>
+        <li>EventEmitter</li>
+    </ul>
+
+
+    
 
     
 
@@ -263,67 +433,7 @@
 <dd>
     
     <div class="description">
-        Accessor property for getting the current handler timings.
-    </div>
-    
-
-    
-
-    
-<dl class="details">
-    
-
-	
-
-	
-
-	
-
-    
-
-    
-
-    
-
-    
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-</dd>
-
-        
-            
-<hr>
-<dt class="name" id="outstandingMessageCount">
-    <h4 id="outstandingMessageCount"><span class="type-signature"></span>outstandingMessageCount<span class="type-signature"></span></h4>
-
-    
-</dt>
-<dd>
-    
-    <div class="description">
-        Accessor property for retrieving the number of messages being handled, subscribed and replies.
+        Accessor property that returns timing data for all transports.
     </div>
     
 
@@ -382,7 +492,7 @@
             
 <hr>
 <dt>
-    <h4 class="name" id="_ackMessageAndReply"><span class="type-signature">&lt;async> </span>_ackMessageAndReply(queueName, msg, pattern [, reply] [, noAck])</h4>
+    <h4 class="name" id="addFireAndForgetListener"><span class="type-signature"></span>addFireAndForgetListener(routingKey, callback [, options])</h4>
     
     
 </dt>
@@ -390,7 +500,7 @@
 
     
     <div class="description">
-        A "safe", promise-based method for acknowledging messages that is guaranteed to resolve.
+        Adds a new fire-and-forget message handler.
     </div>
     
 
@@ -427,13 +537,13 @@
 
         <tr>
             
-                <td class="name"><code>queueName</code></td>
+                <td class="name"><code>routingKey</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">String</span>
+<span class="param-type">string</span>
 
 
 
@@ -452,1467 +562,7 @@
 
             
 
-            <td class="description last">The queue name of the channel the message was received on.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>msg</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Object</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">The RabbitMQ message to acknowledge.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>pattern</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">String</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">The routing key of the message.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>reply</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Object</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">The request body of the response message to send.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>noAck</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Boolean</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">If truthy, skip the ack.</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-    
-
-    
-<dl class="details">
-    
-
-	
-
-	
-
-	
-
-    
-
-    
-
-    
-
-    
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <h5>Returns:</h5>
-    
-            
-<div class="param-desc">
-    Promise that resolves when the message is acknowledged.
-</div>
-
-
-
-<dl>
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type">Promise</span>
-
-
-
-    </dd>
-</dl>
-
-
-        
-
-    
-</dd>
-
-        
-            
-<hr>
-<dt>
-    <h4 class="name" id="_assertTopology"><span class="type-signature">&lt;async> </span>_assertTopology()</h4>
-    
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        Called to assert any RabbitMQ topology after a successful connection is established.
-    </div>
-    
-
-    
-
-    
-
-    
-    
-
-    
-<dl class="details">
-    
-
-	
-
-	
-
-	
-
-    
-
-    
-
-    
-
-    
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <h5>Returns:</h5>
-    
-            
-<div class="param-desc">
-    Promise resolving when all defined topology has been confirmed.
-</div>
-
-
-
-<dl>
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type">Promise</span>
-
-
-
-    </dd>
-</dl>
-
-
-        
-
-    
-</dd>
-
-        
-            
-<hr>
-<dt>
-    <h4 class="name" id="_checkTopology"><span class="type-signature">&lt;async> </span>_checkTopology()</h4>
-    
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        Called periodically to confirm the existence of expected topology.
-    </div>
-    
-
-    
-
-    
-
-    
-    
-
-    
-<dl class="details">
-    
-
-	
-
-	
-
-	
-
-    
-
-    
-
-    
-
-    
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <h5>Returns:</h5>
-    
-            
-<div class="param-desc">
-    Promise resolving when all defined topology has been confirmed.
-</div>
-
-
-
-<dl>
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type">Promise</span>
-
-
-
-    </dd>
-</dl>
-
-
-        
-
-    
-</dd>
-
-        
-            
-<hr>
-<dt>
-    <h4 class="name" id="_handleReply"><span class="type-signature"></span>_handleReply(msg)</h4>
-    
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        Called to handle a reply to an RPC-style message.
-    </div>
-    
-
-    
-
-    
-
-    
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>msg</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Object</span>
-
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">The RabbitMQ message.</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-    
-
-    
-<dl class="details">
-    
-
-	
-
-	
-
-	
-
-    
-
-    
-
-    
-
-    
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dd>
-
-        
-            
-<hr>
-<dt>
-    <h4 class="name" id="_nackMessageAndReply"><span class="type-signature">&lt;async> </span>_nackMessageAndReply(queueName, msg, pattern [, reply] [, noAck])</h4>
-    
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        A "safe", promise-based method for nacking messages that is guaranteed to resolve.Nacked messages will not be requeued.
-    </div>
-    
-
-    
-
-    
-
-    
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-        <th>Argument</th>
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>queueName</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">String</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">The queue name of the channel the message was received on.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>msg</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Object</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">The RabbitMQ message to nack.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>pattern</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">String</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">The routing key of the message.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>reply</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">String</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">The error message to end in reply.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>noAck</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Boolean</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">If truthy, skip the ack.</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-    
-
-    
-<dl class="details">
-    
-
-	
-
-	
-
-	
-
-    
-
-    
-
-    
-
-    
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <h5>Returns:</h5>
-    
-            
-<div class="param-desc">
-    Promise that resolves when the message is nacked.
-</div>
-
-
-
-<dl>
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type">Promise</span>
-
-
-
-    </dd>
-</dl>
-
-
-        
-
-    
-</dd>
-
-        
-            
-<hr>
-<dt>
-    <h4 class="name" id="_rejectMessage"><span class="type-signature">&lt;async> </span>_rejectMessage(queueName, msg, pattern [, noAck])</h4>
-    
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        A "safe", promise-based method for rejecting messages that is guaranteed to resolve.Rejected messages will be requeued for retry.
-    </div>
-    
-
-    
-
-    
-
-    
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-        <th>Argument</th>
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>queueName</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">String</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">The queueName of the channel the message was received on.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>msg</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Object</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">The RabbitMQ message to reject.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>pattern</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">String</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">The routing key of the message.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>noAck</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Boolean</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">If truthy, skip the nack.</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-    
-
-    
-<dl class="details">
-    
-
-	
-
-	
-
-	
-
-    
-
-    
-
-    
-
-    
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <h5>Returns:</h5>
-    
-            
-<div class="param-desc">
-    Promise that resolves when the message is rejected.
-</div>
-
-
-
-<dl>
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type">Promise</span>
-
-
-
-    </dd>
-</dl>
-
-
-        
-
-    
-</dd>
-
-        
-            
-<hr>
-<dt>
-    <h4 class="name" id="_resolveTopic"><span class="type-signature"></span>_resolveTopic(pattern)</h4>
-    
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        Called to resolve the RabbitMQ topic key corresponding to an address.
-    </div>
-    
-
-    
-
-    
-
-    
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>pattern</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">String</span>
-
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"></td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-    
-
-    
-<dl class="details">
-    
-
-	
-
-	
-
-	
-
-    
-
-    
-
-    
-
-    
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dd>
-
-        
-            
-<hr>
-<dt>
-    <h4 class="name" id="_setHandlerTiming"><span class="type-signature"></span>_setHandlerTiming(pattern, start)</h4>
-    
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        Updates the timing data for message handler callbacks.
-    </div>
-    
-
-    
-
-    
-
-    
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>pattern</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">String</span>
-
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">The pattern to record timing data for.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>start</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Date</span>
-
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">The time at which the handler started execution.</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-    
-
-    
-<dl class="details">
-    
-
-	
-
-	
-
-	
-
-    
-
-    
-
-    
-
-    
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dd>
-
-        
-            
-<hr>
-<dt>
-    <h4 class="name" id="addRabbitMQListener"><span class="type-signature">&lt;async> </span>addRabbitMQListener(pattern, callback [, options])</h4>
-    
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        Adds a new listener for the specified pattern, asserting any associated topology.
-    </div>
-    
-
-    
-
-    
-
-    
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-        <th>Argument</th>
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>pattern</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">String</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">The pattern to bind to.</td>
+            <td class="description last">The routing key of the message to handle.</td>
         </tr>
 
     
@@ -1944,7 +594,7 @@
 
             
 
-            <td class="description last">The callback function to handle messages. This function MUST return a promise!</td>
+            <td class="description last">The function to call when a new message is received.</td>
         </tr>
 
     
@@ -1957,7 +607,7 @@
             <td class="type">
             
                 
-<span class="param-type">Object</span>
+<span class="param-type">object</span>
 
 
 
@@ -1978,7 +628,7 @@
 
             
 
-            <td class="description last">Additional options for queues, exchanges, and binding.</td>
+            <td class="description last">Optional params for configuring the handler.</td>
         </tr>
 
     
@@ -2041,10 +691,6 @@
     <h5>Returns:</h5>
     
             
-<div class="param-desc">
-    A promise that resolves when the listener has been added.
-</div>
-
 
 
 <dl>
@@ -2070,7 +716,7 @@
             
 <hr>
 <dt>
-    <h4 class="name" id="assertBinding"><span class="type-signature">&lt;async> </span>assertBinding(queue, exchange, topic [, options])</h4>
+    <h4 class="name" id="addRequestListener"><span class="type-signature"></span>addRequestListener(routingKey, callback [, options])</h4>
     
     
 </dt>
@@ -2078,7 +724,7 @@
 
     
     <div class="description">
-        Binds a queue to an exchange, recording the binding in the topology definition.
+        Adds a new RPC message handler.
     </div>
     
 
@@ -2115,13 +761,13 @@
 
         <tr>
             
-                <td class="name"><code>queue</code></td>
+                <td class="name"><code>routingKey</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">String</span>
+<span class="param-type">string</span>
 
 
 
@@ -2140,20 +786,20 @@
 
             
 
-            <td class="description last">The name of the queue to bind.</td>
+            <td class="description last">The routing key of the message to handle.</td>
         </tr>
 
     
 
         <tr>
             
-                <td class="name"><code>exchange</code></td>
+                <td class="name"><code>callback</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">String</span>
+<span class="param-type">function</span>
 
 
 
@@ -2172,39 +818,7 @@
 
             
 
-            <td class="description last">The exchange to bind.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>topic</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">String</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">The routing key to bind.</td>
+            <td class="description last">The function to call when a new message is received.</td>
         </tr>
 
     
@@ -2217,7 +831,7 @@
             <td class="type">
             
                 
-<span class="param-type">Object</span>
+<span class="param-type">object</span>
 
 
 
@@ -2238,7 +852,7 @@
 
             
 
-            <td class="description last">Various binding options.</td>
+            <td class="description last">Optional params for configuring the handler.</td>
         </tr>
 
     
@@ -2301,10 +915,6 @@
     <h5>Returns:</h5>
     
             
-<div class="param-desc">
-    Promise that resolves when the binding is complete.
-</div>
-
 
 
 <dl>
@@ -2330,7 +940,7 @@
             
 <hr>
 <dt>
-    <h4 class="name" id="assertExchange"><span class="type-signature">&lt;async> </span>assertExchange(name, type [, options])</h4>
+    <h4 class="name" id="connect"><span class="type-signature"></span>connect()</h4>
     
     
 </dt>
@@ -2338,7 +948,7 @@
 
     
     <div class="description">
-        Asserts an exchange on RabbitMQ, adding it to the list of known topology.
+        Connects all transports.
     </div>
     
 
@@ -2348,132 +958,6 @@
 
     
     
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-        <th>Argument</th>
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>name</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">String</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">The name of the exchange.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>type</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">String</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">The type of exchange.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>options</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Object</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">Various exchange options.</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-    
 
     
 <dl class="details">
@@ -2529,10 +1013,6 @@
     <h5>Returns:</h5>
     
             
-<div class="param-desc">
-    Promise that resolves when the exchange has been asserted.
-</div>
-
 
 
 <dl>
@@ -2558,7 +1038,7 @@
             
 <hr>
 <dt>
-    <h4 class="name" id="assertQueue"><span class="type-signature">&lt;async> </span>assertQueue(name [, options])</h4>
+    <h4 class="name" id="disconnect"><span class="type-signature"></span>disconnect()</h4>
     
     
 </dt>
@@ -2566,7 +1046,7 @@
 
     
     <div class="description">
-        Asserts a queue on RabbitMQ, adding it to the list of known topology.
+        Disconnects all transports
     </div>
     
 
@@ -2576,100 +1056,6 @@
 
     
     
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-        <th>Argument</th>
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>name</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">String</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">The name of the queue.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>options</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Object</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">Various queue options.</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-    
 
     
 <dl class="details">
@@ -2725,10 +1111,6 @@
     <h5>Returns:</h5>
     
             
-<div class="param-desc">
-    Promise that resolves when the queue has been asserted.
-</div>
-
 
 
 <dl>
@@ -2754,7 +1136,7 @@
             
 <hr>
 <dt>
-    <h4 class="name" id="connect"><span class="type-signature">&lt;async> </span>connect()</h4>
+    <h4 class="name" id="listen"><span class="type-signature"></span>listen()</h4>
     
     
 </dt>
@@ -2762,7 +1144,7 @@
 
     
     <div class="description">
-        Called to connect to RabbitMQ and build all channels.
+        Starts listening to messages.
     </div>
     
 
@@ -2860,7 +1242,7 @@
 
     
     <div class="description">
-        Publishes a fire-and-forget message that doesn't wait for an explicit response.
+        Publishes a fire-and-forget message that is not expected to return a meaningful response.
     </div>
     
 
@@ -2903,7 +1285,7 @@
             <td class="type">
             
                 
-<span class="param-type">String</span>
+<span class="param-type">string</span>
 
 
 
@@ -2935,7 +1317,7 @@
             <td class="type">
             
                 
-<span class="param-type">Object</span>
+<span class="param-type">object</span>
 
 
 
@@ -2969,7 +1351,7 @@
             <td class="type">
             
                 
-<span class="param-type">Object</span>
+<span class="param-type">object</span>
 
 
 
@@ -2990,7 +1372,103 @@
 
             
 
-            <td class="description last">Optional publishing options.</td>
+            <td class="description last">Optional publishing options.
+                <h6 class="method-params-label method-subparams-label">Properties</h6>
+                
+
+<table class="params table table-striped">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Argument</th>
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>correlationId</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">Optional marker used for tracing requests through the system.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>initiator</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">Optional marker used for identifying the user who generated the initial request.</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
         </tr>
 
     
@@ -3041,11 +1519,6 @@
 
     
 
-    
-    <h5>Fires:</h5>
-    <ul>
-        <li><a href="index_.html#event:publishError">index#event:publishError</a></li>
-    </ul>
     
 
     
@@ -3083,7 +1556,7 @@
             
 <hr>
 <dt>
-    <h4 class="name" id="removeRabbitMQListener"><span class="type-signature">&lt;async> </span>removeRabbitMQListener(pattern [, exchange] [, prefix])</h4>
+    <h4 class="name" id="removeFireAndForgetListener"><span class="type-signature"></span>removeFireAndForgetListener(routingKey)</h4>
     
     
 </dt>
@@ -3091,7 +1564,7 @@
 
     
     <div class="description">
-        Called to remove a listener. Note that this call DOES NOT delete any queuesor exchanges. It is recommended that these constructs be made to auto-delete or expireif they are not intended to be persistent.
+        Deletes a fire-and-forget message handler.
     </div>
     
 
@@ -3114,8 +1587,6 @@
         <th>Type</th>
 
         
-        <th>Argument</th>
-        
 
         
 
@@ -3128,13 +1599,13 @@
 
         <tr>
             
-                <td class="name"><code>pattern</code></td>
+                <td class="name"><code>routingKey</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">String</span>
+<span class="param-type">string</span>
 
 
 
@@ -3142,86 +1613,10 @@
             </td>
 
             
-                <td class="attributes">
-                
-
-                
-
-                
-                </td>
-            
 
             
 
-            <td class="description last">The pattern to match.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>exchange</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">String</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">The name of the exchange to remove the binding.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>prefix</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">String</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last">The queue prefix to match.</td>
+            <td class="description last">The routing key of the handler to remove.</td>
         </tr>
 
     
@@ -3284,10 +1679,154 @@
     <h5>Returns:</h5>
     
             
-<div class="param-desc">
-    Promise that resolves when the listener has been removed.
-</div>
 
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise</span>
+
+
+
+    </dd>
+</dl>
+
+
+        
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
+    <h4 class="name" id="removeRequestListener"><span class="type-signature"></span>removeRequestListener(routingKey)</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        Deletes an RPC message handler.
+    </div>
+    
+
+    
+
+    
+
+    
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>routingKey</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The routing key of the handler to remove.</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <h5>Returns:</h5>
+    
+            
 
 
 <dl>
@@ -3321,7 +1860,7 @@
 
     
     <div class="description">
-        Publishes an RPC-style message that waits for a response.
+        Publishes an RPC-style message that waits for a response.This base class implementation resolves to the correlationId of the message, either passed or generated.
     </div>
     
 
@@ -3364,7 +1903,7 @@
             <td class="type">
             
                 
-<span class="param-type">String</span>
+<span class="param-type">string</span>
 
 
 
@@ -3396,7 +1935,7 @@
             <td class="type">
             
                 
-<span class="param-type">Object</span>
+<span class="param-type">object</span>
 
 
 
@@ -3430,7 +1969,7 @@
             <td class="type">
             
                 
-<span class="param-type">Object</span>
+<span class="param-type">object</span>
 
 
 
@@ -3451,294 +1990,9 @@
 
             
 
-            <td class="description last">Optional publishing options.</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-    
-
-    
-<dl class="details">
-    
-
-	
-
-	
-
-	
-
-    
-
-    
-
-    
-
-    
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <h5>Returns:</h5>
-    
-            
-
-
-<dl>
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type">Promise</span>
-
-
-
-    </dd>
-</dl>
-
-
-        
-
-    
-</dd>
-
-        
-            
-<hr>
-<dt>
-    <h4 class="name" id="shutdown"><span class="type-signature">&lt;async> </span>shutdown()</h4>
-    
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        Called to safely shutdown the RabbitMQ connection while allowing outstanding messages to process.
-    </div>
-    
-
-    
-
-    
-
-    
-    
-
-    
-<dl class="details">
-    
-
-	
-
-	
-
-	
-
-    
-
-    
-
-    
-
-    
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dd>
-
-        
-            
-<hr>
-<dt>
-    <h4 class="name" id="startConsuming"><span class="type-signature">&lt;async> </span>startConsuming()</h4>
-    
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        Called to start consuming incoming messages from all consumer channels.
-    </div>
-    
-
-    
-
-    
-
-    
-    
-
-    
-<dl class="details">
-    
-
-	
-
-	
-
-	
-
-    
-
-    
-
-    
-
-    
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <h5>Returns:</h5>
-    
-            
-<div class="param-desc">
-    Promise that resolves when all consumers have begun consuming.
-</div>
-
-
-
-<dl>
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type">Promise</span>
-
-
-
-    </dd>
-</dl>
-
-
-        
-
-    
-</dd>
-
-        
-            
-<hr>
-<dt>
-    <h4 class="name" id="stopConsuming"><span class="type-signature">&lt;async> </span>stopConsuming( [awaitReplies])</h4>
-    
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        Called to stop consuming incoming messages from all channels.
-    </div>
-    
-
-    
-
-    
-
-    
-    
-        <h5>Parameters:</h5>
-        
+            <td class="description last">Optional publishing options.
+                <h6 class="method-params-label method-subparams-label">Properties</h6>
+                
 
 <table class="params table table-striped">
     <thead>
@@ -3764,13 +2018,13 @@
 
         <tr>
             
-                <td class="name"><code>awaitReplies</code></td>
+                <td class="name"><code>correlationId</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">Boolean</span>
+<span class="param-type">object</span>
 
 
 
@@ -3791,7 +2045,48 @@
 
             
 
-            <td class="description last">If truthy, this function will skip cancelling the reply consumer.</td>
+            <td class="description last">Optional marker used for tracing requests through the system.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>initiator</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">Optional marker used for identifying the user who generated the initial request.</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
         </tr>
 
     
@@ -3854,10 +2149,6 @@
     <h5>Returns:</h5>
     
             
-<div class="param-desc">
-    Promise that resolves when all consumers have stopped consuming.
-</div>
-
 
 
 <dl>
@@ -3929,7 +2220,7 @@
 <span class="jsdoc-message">
 	Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
 	
-		on 2018-01-17T14:26:22-05:00
+		on 2018-01-26T08:11:32-05:00
 	
 	using the <a href="https://github.com/docstrap/docstrap">DocStrap template</a>.
 </span>

@@ -33,21 +33,14 @@
 			<li class="dropdown">
 				<a href="modules.list.html" class="dropdown-toggle" data-toggle="dropdown">Modules<b class="caret"></b></a>
 				<ul class="dropdown-menu ">
-					<li><a href="module-index.html">index</a></li><li><a href="module-lib_transports_errors.html">lib/transports/errors</a></li><li><a href="module-lib_transports_http.html">lib/transports/http</a></li><li><a href="module-lib_transports_transport.html">lib/transports/transport</a></li>
+					<li><a href="module-index.html">index</a></li>
 				</ul>
 			</li>
 			
 			<li class="dropdown">
 				<a href="classes.list.html" class="dropdown-toggle" data-toggle="dropdown">Classes<b class="caret"></b></a>
 				<ul class="dropdown-menu ">
-					<li><a href="module-index-PostmasterGeneral.html">index~PostmasterGeneral</a></li><li><a href="module-lib_transports_errors-ForbiddenError.html">lib/transports/errors~ForbiddenError</a></li><li><a href="module-lib_transports_errors-InvalidMessageError.html">lib/transports/errors~InvalidMessageError</a></li><li><a href="module-lib_transports_errors-NotFoundError.html">lib/transports/errors~NotFoundError</a></li><li><a href="module-lib_transports_errors-NotImplementedError.html">lib/transports/errors~NotImplementedError</a></li><li><a href="module-lib_transports_errors-RequestError.html">lib/transports/errors~RequestError</a></li><li><a href="module-lib_transports_errors-ResponseError.html">lib/transports/errors~ResponseError</a></li><li><a href="module-lib_transports_errors-ResponseProcessingError.html">lib/transports/errors~ResponseProcessingError</a></li><li><a href="module-lib_transports_errors-TransportDisconnectedError.html">lib/transports/errors~TransportDisconnectedError</a></li><li><a href="module-lib_transports_errors-UnauthorizedError.html">lib/transports/errors~UnauthorizedError</a></li><li><a href="module-lib_transports_transport-Transport.html">lib/transports/transport~Transport</a></li>
-				</ul>
-			</li>
-			
-			<li class="dropdown">
-				<a href="events.list.html" class="dropdown-toggle" data-toggle="dropdown">Events<b class="caret"></b></a>
-				<ul class="dropdown-menu ">
-					<li><a href="index_.html#event:publishError">index#event:publishError</a></li><li><a href="module-lib_transports_transport-Transport.html#event:connectionError">lib/transports/transport~Transport#event:connectionError</a></li><li><a href="module-lib_transports_transport-Transport.html#event:disconnected">lib/transports/transport~Transport#event:disconnected</a></li><li><a href="module-lib_transports_transport-Transport.html#event:reconnected">lib/transports/transport~Transport#event:reconnected</a></li>
+					<li><a href="module-index-PostmasterGeneral.html">index~PostmasterGeneral</a></li>
 				</ul>
 			</li>
 			
@@ -102,63 +95,43 @@
     <section class="readme-section">
         <article><p>﻿# postmaster-general
 <a href="https://github.com/darklordzw/postmaster-general/blob/master/LICENSE.md"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="MIT License"></a> <a href="https://travis-ci.org/darklordzw/postmaster-general"><img src="https://travis-ci.org/darklordzw/postmaster-general.svg?branch=master" alt="Build Status"></a> <a href="https://coveralls.io/github/darklordzw/postmaster-general?branch=master"><img src="https://coveralls.io/repos/github/darklordzw/postmaster-general/badge.svg?branch=master" alt="Coverage Status"></a></p>
-<p>Dead-simple, ready-to-use, promise-based Node.js library for microservice communication over <a href="https://www.amqp.org/">AMQP</a> using <a href="https://github.com/squaremo/amqp.node">amqplib</a>.</p>
-<h2>Features</h2><p>postmaster-general strives to be unopinionated, serving as a thin wrapper around <a href="https://github.com/squaremo/amqp.node">amqplib</a> that sets some sensible defaults and encourages best-practices, including:</p>
+<p>Simple, promise-based Node.js library for microservice communication over a variety of transport protocols.</p>
+<h2>Transport Plugins</h2><p>postmaster-general functions using a variety of transport plugins that should be installed as peer-dependencies.</p>
 <ul>
-<li>Dedicated channels for publishing, consuming, and asserting topology.</li>
-<li>Single-purpose listener queues, no mixing messages.</li>
-<li>Built-in RPC support.</li>
-<li>Automatic reconnect on connection failure and channel error.</li>
+<li><a href="https://github.com/darklordzw/postmaster-general-http-transport">HTTP</a></li>
+<li><a href="https://github.com/darklordzw/postmaster-general-aws-transport">Amazon Web Services SNS &amp; SQS</a></li>
 </ul>
-<h2>Install</h2><p>Note: This library makes heavy use of the async/await keywords, and requires Node.js 7+.</p>
-<pre class="prettyprint source lang-sh"><code>npm install --save postmaster-general</code></pre><h2>Usage</h2><p>The following snippet showcases basic usage.</p>
+<h2>Install</h2><pre class="prettyprint source lang-sh"><code>npm install --save postmaster-general</code></pre><h2>Usage</h2><p>The following snippet showcases basic usage.</p>
 <pre class="prettyprint source lang-js"><code>const PostmasterGeneral = require('postmaster-general');
+const HTTPTransport = require('postmaster-general-http-transport');
 
-const postmaster = new PostmasterGeneral({ logLevel: 'debug' });
+const transport = new HTTPTransport();
+const postmaster = new PostmasterGeneral({
+    requestTransport: transport,
+    publishTransport: transport,
+    rpcListenerTransport: transport,
+    fafListenerTransport: transport
+});
 
-const printGreeting = async (message) => {
+const printGreeting = (message) => {
     console.log('[action:get_greeting] received');
-    return { greeting: 'Hello, ' + message.name };
+    return Promise.resolve({ greeting: 'Hello, ' + message.name });
 };
 
 // Start the Postmaster instance.
 postmaster.connect()
-    .then(() => postmaster.addRabbitMQListener('action:get_greeting', printGreeting))
-    // Add a listener callback.
-    .then(() => postmaster.startConsuming())
-    // Publish a fire-and-forget message.
-    .then(() => postmaster.publish('action:get_greeting', { name: 'Bob' }))
-    // Publish a message with a callback.
+    .then(() => postmaster.addRequestListener('action:get_greeting', printGreeting))
+    .then(() => postmaster.listen())
     .then(() => postmaster.request('action:get_greeting', { name: 'Steve' }))
-    // Handle the callback.
     .then((res) => {
+        // Handle the response.
         console.log(res.greeting);
     })
-    // Shut everything down.
-    .then(() => postmaster.shutdown())
+    .then(() => postmaster.disconnect())
     .catch((err) => {
         console.log(err.message);
-    })
-    .then(() => {
-        process.exit();
-    });</code></pre><h3>Options</h3><p>The following options may be overridden in the constructor:</p>
-<pre class="prettyprint source lang-json"><code>{
-    &quot;connectRetryDelay&quot;: 1000,
-    &quot;connectRetryLimit&quot;: 3,
-    &quot;deadLetterExchange&quot;: &quot;postmaster.dlx&quot;,
-    &quot;handlerTimingResetInterval&quot;: 30000,
-    &quot;heartbeat&quot;: 30,
-    &quot;logLevel&quot;: &quot;warn&quot;,    
-    &quot;pm2&quot;: false,
-    &quot;pm2InstanceVar&quot;: &quot;NODE_APP_INSTANCE&quot;,
-    &quot;publishRetryDelay&quot;: 1000,
-    &quot;publishRetryLimit&quot;: 3,
-    &quot;queuePrefix&quot;: &quot;postmaster.queue&quot;,
-    &quot;removeListenerRetryDelay&quot;: 1000,
-    &quot;removeListenerRetryLimit&quot;: 3,
-    &quot;shutdownTimeout&quot;: 30000,
-    &quot;url&quot;: &quot;amqp://guest:guest@localhost:5672&quot;
-}</code></pre><h2>License</h2><p>Licensed under the <a href="./LICENSE.md">MIT</a> license.</p></article>
+    });</code></pre><h3>Options</h3><p>See the &quot;docs&quot; folder for documentation.</p>
+<h2>License</h2><p>Licensed under the <a href="./LICENSE.md">MIT</a> license.</p></article>
     </section>
 
 
@@ -204,7 +177,7 @@ postmaster.connect()
 <span class="jsdoc-message">
 	Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a>
 	
-		on 2018-01-17T14:26:22-05:00
+		on 2018-01-26T08:11:32-05:00
 	
 	using the <a href="https://github.com/docstrap/docstrap">DocStrap template</a>.
 </span>
