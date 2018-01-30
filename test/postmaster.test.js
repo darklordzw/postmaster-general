@@ -37,12 +37,10 @@ describe('postmaster-general', () => {
 		it('should properly initialize settings when passed transports', () => {
 			const postmaster = new PostmasterGeneral({
 				requestTransport: new Transport(),
-				publishTransport: new Transport(),
-				fafListenerTransport: new Transport(),
-				rpcListenerTransport: new Transport()
+				publishTransport: new Transport()
 			});
 			expect(postmaster.transports).to.exist();
-			Object.keys(postmaster.transports).length.should.equal(4);
+			Object.keys(postmaster.transports).length.should.equal(2);
 		});
 		it('should error on invalid input', () => {
 			try {
@@ -73,14 +71,14 @@ describe('postmaster-general', () => {
 		let postmaster;
 
 		beforeEach(() => {
-			postmaster = new PostmasterGeneral({ rpcListenerTransport: new Transport() });
+			postmaster = new PostmasterGeneral({ requestTransport: new Transport() });
 		});
 
 		it('should return an empty object if there are no timings', () => {
 			postmaster.handlerTimings.should.be.empty();
 		});
 		it('should return proper timings if set', () => {
-			postmaster.transports.rpcListener.timings.test = 100;
+			postmaster.transports.request.timings.test = 100;
 			Object.keys(postmaster.handlerTimings).length.should.equal(1);
 			postmaster.handlerTimings.test.should.equal(100);
 		});
@@ -105,7 +103,7 @@ describe('postmaster-general', () => {
 			const spy1 = sandbox.stub(transport1, 'connect');
 			const spy2 = sandbox.stub(transport2, 'connect');
 
-			const postmaster = new PostmasterGeneral({ publishTransport: transport1, rpcListenerTransport: transport2 });
+			const postmaster = new PostmasterGeneral({ publishTransport: transport1, requestTransport: transport2 });
 			return postmaster.connect()
 				.then(() => {
 					spy1.calledOnce.should.be.true();
@@ -125,7 +123,7 @@ describe('postmaster-general', () => {
 			const spy1 = sandbox.stub(transport1, 'disconnect');
 			const spy2 = sandbox.stub(transport2, 'disconnect');
 
-			const postmaster = new PostmasterGeneral({ publishTransport: transport1, rpcListenerTransport: transport2 });
+			const postmaster = new PostmasterGeneral({ publishTransport: transport1, requestTransport: transport2 });
 			return postmaster.disconnect()
 				.then(() => {
 					spy1.calledOnce.should.be.true();
@@ -136,7 +134,7 @@ describe('postmaster-general', () => {
 
 	describe('addRequestListener:', () => {
 		it('should reject if routing key is invalid', () => {
-			const postmaster = new PostmasterGeneral({ rpcListenerTransport: new Transport() });
+			const postmaster = new PostmasterGeneral({ requestTransport: new Transport() });
 			return postmaster.addRequestListener(4444, () => {
 				return Promise.resolve();
 			})
@@ -150,7 +148,7 @@ describe('postmaster-general', () => {
 				});
 		});
 		it('should reject if callback is invalid', () => {
-			const postmaster = new PostmasterGeneral({ rpcListenerTransport: new Transport() });
+			const postmaster = new PostmasterGeneral({ requestTransport: new Transport() });
 			return postmaster.addRequestListener('test')
 				.then(() => {
 					throw new Error('Failed to catch invalid input.');
@@ -162,7 +160,7 @@ describe('postmaster-general', () => {
 				});
 		});
 		it('should reject if no request transport is configured', () => {
-			const postmaster = new PostmasterGeneral({ fafListenerTransport: new Transport() });
+			const postmaster = new PostmasterGeneral({ publishTransport: new Transport() });
 			return postmaster.addRequestListener('test', () => {
 				return Promise.resolve();
 			})
@@ -179,7 +177,7 @@ describe('postmaster-general', () => {
 			const transport1 = new Transport();
 			const spy1 = sandbox.stub(transport1, 'addMessageListener');
 
-			const postmaster = new PostmasterGeneral({ rpcListenerTransport: transport1 });
+			const postmaster = new PostmasterGeneral({ requestTransport: transport1 });
 			return postmaster.addRequestListener('test', () => {
 				return Promise.resolve();
 			})
@@ -191,7 +189,7 @@ describe('postmaster-general', () => {
 
 	describe('addFireAndForgetListener:', () => {
 		it('should reject if routing key is invalid', () => {
-			const postmaster = new PostmasterGeneral({ fafListenerTransport: new Transport() });
+			const postmaster = new PostmasterGeneral({ publishTransport: new Transport() });
 			return postmaster.addFireAndForgetListener(4444, () => {
 				return Promise.resolve();
 			})
@@ -205,7 +203,7 @@ describe('postmaster-general', () => {
 				});
 		});
 		it('should reject if callback is invalid', () => {
-			const postmaster = new PostmasterGeneral({ fafListenerTransport: new Transport() });
+			const postmaster = new PostmasterGeneral({ publishTransport: new Transport() });
 			return postmaster.addFireAndForgetListener('test')
 				.then(() => {
 					throw new Error('Failed to catch invalid input.');
@@ -217,7 +215,7 @@ describe('postmaster-general', () => {
 				});
 		});
 		it('should reject if no request transport is configured', () => {
-			const postmaster = new PostmasterGeneral({ rpcListenerTransport: new Transport() });
+			const postmaster = new PostmasterGeneral({ requestTransport: new Transport() });
 			return postmaster.addFireAndForgetListener('test', () => {
 				return Promise.resolve();
 			})
@@ -234,7 +232,7 @@ describe('postmaster-general', () => {
 			const transport1 = new Transport();
 			const spy1 = sandbox.stub(transport1, 'addMessageListener');
 
-			const postmaster = new PostmasterGeneral({ fafListenerTransport: transport1 });
+			const postmaster = new PostmasterGeneral({ publishTransport: transport1 });
 			return postmaster.addFireAndForgetListener('test', () => {
 				return Promise.resolve();
 			})
@@ -246,7 +244,7 @@ describe('postmaster-general', () => {
 
 	describe('removeRequestListener:', () => {
 		it('should reject if routing key is invalid', () => {
-			const postmaster = new PostmasterGeneral({ rpcListenerTransport: new Transport() });
+			const postmaster = new PostmasterGeneral({ requestTransport: new Transport() });
 			return postmaster.removeRequestListener(4444, () => {
 				return Promise.resolve();
 			})
@@ -260,7 +258,7 @@ describe('postmaster-general', () => {
 				});
 		});
 		it('should reject if no request transport is configured', () => {
-			const postmaster = new PostmasterGeneral({ fafListenerTransport: new Transport() });
+			const postmaster = new PostmasterGeneral({ publishTransport: new Transport() });
 			return postmaster.removeRequestListener('test', () => {
 				return Promise.resolve();
 			})
@@ -277,7 +275,7 @@ describe('postmaster-general', () => {
 			const transport1 = new Transport();
 			const spy1 = sandbox.stub(transport1, 'removeMessageListener');
 
-			const postmaster = new PostmasterGeneral({ rpcListenerTransport: transport1 });
+			const postmaster = new PostmasterGeneral({ requestTransport: transport1 });
 			return postmaster.removeRequestListener('test', () => {
 				return Promise.resolve();
 			})
@@ -289,7 +287,7 @@ describe('postmaster-general', () => {
 
 	describe('removeFireAndForgetListener:', () => {
 		it('should reject if routing key is invalid', () => {
-			const postmaster = new PostmasterGeneral({ fafListenerTransport: new Transport() });
+			const postmaster = new PostmasterGeneral({ publishTransport: new Transport() });
 			return postmaster.removeFireAndForgetListener(4444, () => {
 				return Promise.resolve();
 			})
@@ -303,7 +301,7 @@ describe('postmaster-general', () => {
 				});
 		});
 		it('should reject if no request transport is configured', () => {
-			const postmaster = new PostmasterGeneral({ rpcListenerTransport: new Transport() });
+			const postmaster = new PostmasterGeneral({ requestTransport: new Transport() });
 			return postmaster.removeFireAndForgetListener('test', () => {
 				return Promise.resolve();
 			})
@@ -320,7 +318,7 @@ describe('postmaster-general', () => {
 			const transport1 = new Transport();
 			const spy1 = sandbox.stub(transport1, 'removeMessageListener');
 
-			const postmaster = new PostmasterGeneral({ fafListenerTransport: transport1 });
+			const postmaster = new PostmasterGeneral({ publishTransport: transport1 });
 			return postmaster.removeFireAndForgetListener('test', () => {
 				return Promise.resolve();
 			})
@@ -346,17 +344,14 @@ describe('postmaster-general', () => {
 		it('should listen all listener transports', () => {
 			const transport1 = new Transport();
 			const transport2 = new Transport();
-			const transport3 = new Transport();
 			const spy1 = sandbox.stub(transport1, 'listen');
 			const spy2 = sandbox.stub(transport2, 'listen');
-			const spy3 = sandbox.stub(transport3, 'listen');
 
-			const postmaster = new PostmasterGeneral({ publishTransport: transport1, rpcListenerTransport: transport2, fafListenerTransport: transport3 });
+			const postmaster = new PostmasterGeneral({ publishTransport: transport1, requestTransport: transport2 });
 			return postmaster.listen()
 				.then(() => {
-					spy1.calledOnce.should.be.false();
+					spy1.calledOnce.should.be.true();
 					spy2.calledOnce.should.be.true();
-					spy3.calledOnce.should.be.true();
 				});
 		});
 	});

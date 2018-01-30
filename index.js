@@ -18,10 +18,8 @@ class PostmasterGeneral extends EventEmitter {
 	/**
 	 * Constructor function for the PostmasterGeneral object.
 	 * @param {object} [options] - Optional settings.
-	 * @param {Transport} [options.publishTransport] - The core Transport object used to send fire-and-forget messages.
-	 * @param {Transport} [options.requestTransport] - The core Transport object used to send RPC messages.
-	 * @param {Transport} [options.fafListenerTransport] - The core Transport object used to receive fire-and-forget messages.
-	 * @param {Transport} [options.rpcListenerTransport] - The core Transport object used to listen to RPC messages.
+	 * @param {Transport} [options.publishTransport] - The core Transport object used to handle fire-and-forget messages.
+	 * @param {Transport} [options.requestTransport] - The core Transport object used to handle RPC messages.
 	 */
 	constructor(options) {
 		super();
@@ -34,12 +32,6 @@ class PostmasterGeneral extends EventEmitter {
 		if (!_.isUndefined(options.requestTransport) && !(options.requestTransport instanceof Transport)) {
 			throw new TypeError('"options.requestTransport" should be a Transport.');
 		}
-		if (!_.isUndefined(options.fafListenerTransport) && !(options.fafListenerTransport instanceof Transport)) {
-			throw new TypeError('"options.fafListenerTransport" should be a Transport.');
-		}
-		if (!_.isUndefined(options.rpcListenerTransport) && !(options.rpcListenerTransport instanceof Transport)) {
-			throw new TypeError('"options.rpcListenerTransport" should be a Transport.');
-		}
 
 		this.transports = {};
 
@@ -48,12 +40,6 @@ class PostmasterGeneral extends EventEmitter {
 		}
 		if (options.requestTransport) {
 			this.transports.request = options.requestTransport;
-		}
-		if (options.fafListenerTransport) {
-			this.transports.fafListener = options.fafListenerTransport;
-		}
-		if (options.rpcListenerTransport) {
-			this.transports.rpcListener = options.rpcListenerTransport;
 		}
 
 		for (const key of Object.keys(this.transports)) {
@@ -135,12 +121,12 @@ class PostmasterGeneral extends EventEmitter {
 			if (!_.isFunction(callback)) {
 				throw new TypeError('"callback" should be a function that returns a Promise.');
 			}
-			if (!this.transports.rpcListener) {
+			if (!this.transports.request) {
 				throw new Error('Cannot add a new RPC listener, no RPC Transport has been configured.');
 			}
 			resolve();
 		})
-		.then(() => this.transports.rpcListener.addMessageListener(routingKey, callback, options));
+		.then(() => this.transports.request.addMessageListener(routingKey, callback, options));
 	}
 
 	/**
@@ -160,12 +146,12 @@ class PostmasterGeneral extends EventEmitter {
 			if (!_.isFunction(callback)) {
 				throw new TypeError('"callback" should be a function that returns a Promise.');
 			}
-			if (!this.transports.fafListener) {
+			if (!this.transports.publish) {
 				throw new Error('Cannot add a new fire-and-forget listener, no fire-and-forget Transport has been configured.');
 			}
 			resolve();
 		})
-		.then(() => this.transports.fafListener.addMessageListener(routingKey, callback, options));
+		.then(() => this.transports.publish.addMessageListener(routingKey, callback, options));
 	}
 
 	/**
@@ -178,12 +164,12 @@ class PostmasterGeneral extends EventEmitter {
 			if (!_.isString(routingKey)) {
 				throw new TypeError('"routingKey" should be a string.');
 			}
-			if (!this.transports.rpcListener) {
+			if (!this.transports.request) {
 				throw new Error('Cannot remove an RPC listener, no RPC Transport has been configured.');
 			}
 			resolve();
 		})
-		.then(() => this.transports.rpcListener.removeMessageListener(routingKey));
+		.then(() => this.transports.request.removeMessageListener(routingKey));
 	}
 
 	/**
@@ -196,12 +182,12 @@ class PostmasterGeneral extends EventEmitter {
 			if (!_.isString(routingKey)) {
 				throw new TypeError('"routingKey" should be a string.');
 			}
-			if (!this.transports.fafListener) {
+			if (!this.transports.publish) {
 				throw new Error('Cannot remove a fire-and-forget listener, no fire-and-forget Transport has been configured.');
 			}
 			resolve();
 		})
-		.then(() => this.transports.fafListener.removeMessageListener(routingKey));
+		.then(() => this.transports.publish.removeMessageListener(routingKey));
 	}
 
 	/**
@@ -212,7 +198,7 @@ class PostmasterGeneral extends EventEmitter {
 		const promises = [];
 
 		for (const key of Object.keys(this.transports)) {
-			if (this.transports[key] && (key === 'rpcListener' || key === 'fafListener')) {
+			if (this.transports[key] && (key === 'request' || key === 'publish')) {
 				promises.push(this.transports[key].listen());
 			}
 		}

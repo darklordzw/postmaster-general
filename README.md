@@ -25,9 +25,7 @@ const HTTPTransport = require('postmaster-general-http-transport');
 const transport = new HTTPTransport();
 const postmaster = new PostmasterGeneral({
 	requestTransport: transport,
-	publishTransport: transport,
-	rpcListenerTransport: transport,
-	fafListenerTransport: transport
+	publishTransport: transport
 });
 
 const printGreeting = (message) => {
