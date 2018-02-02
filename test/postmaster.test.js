@@ -187,10 +187,10 @@ describe('postmaster-general', () => {
 		});
 	});
 
-	describe('addFireAndForgetListener:', () => {
+	describe('addPublishListener:', () => {
 		it('should reject if routing key is invalid', () => {
 			const postmaster = new PostmasterGeneral({ publishTransport: new Transport() });
-			return postmaster.addFireAndForgetListener(4444, () => {
+			return postmaster.addPublishListener(4444, () => {
 				return Promise.resolve();
 			})
 				.then(() => {
@@ -204,7 +204,7 @@ describe('postmaster-general', () => {
 		});
 		it('should reject if callback is invalid', () => {
 			const postmaster = new PostmasterGeneral({ publishTransport: new Transport() });
-			return postmaster.addFireAndForgetListener('test')
+			return postmaster.addPublishListener('test')
 				.then(() => {
 					throw new Error('Failed to catch invalid input.');
 				})
@@ -216,7 +216,7 @@ describe('postmaster-general', () => {
 		});
 		it('should reject if no request transport is configured', () => {
 			const postmaster = new PostmasterGeneral({ requestTransport: new Transport() });
-			return postmaster.addFireAndForgetListener('test', () => {
+			return postmaster.addPublishListener('test', () => {
 				return Promise.resolve();
 			})
 				.then(() => {
@@ -233,7 +233,7 @@ describe('postmaster-general', () => {
 			const spy1 = sandbox.stub(transport1, 'addMessageListener');
 
 			const postmaster = new PostmasterGeneral({ publishTransport: transport1 });
-			return postmaster.addFireAndForgetListener('test', () => {
+			return postmaster.addPublishListener('test', () => {
 				return Promise.resolve();
 			})
 				.then(() => {
@@ -285,10 +285,10 @@ describe('postmaster-general', () => {
 		});
 	});
 
-	describe('removeFireAndForgetListener:', () => {
+	describe('removePublishListener:', () => {
 		it('should reject if routing key is invalid', () => {
 			const postmaster = new PostmasterGeneral({ publishTransport: new Transport() });
-			return postmaster.removeFireAndForgetListener(4444, () => {
+			return postmaster.removePublishListener(4444, () => {
 				return Promise.resolve();
 			})
 				.then(() => {
@@ -302,7 +302,7 @@ describe('postmaster-general', () => {
 		});
 		it('should reject if no request transport is configured', () => {
 			const postmaster = new PostmasterGeneral({ requestTransport: new Transport() });
-			return postmaster.removeFireAndForgetListener('test', () => {
+			return postmaster.removePublishListener('test', () => {
 				return Promise.resolve();
 			})
 				.then(() => {
@@ -319,7 +319,7 @@ describe('postmaster-general', () => {
 			const spy1 = sandbox.stub(transport1, 'removeMessageListener');
 
 			const postmaster = new PostmasterGeneral({ publishTransport: transport1 });
-			return postmaster.removeFireAndForgetListener('test', () => {
+			return postmaster.removePublishListener('test', () => {
 				return Promise.resolve();
 			})
 				.then(() => {

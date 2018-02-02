@@ -136,7 +136,7 @@ class PostmasterGeneral extends EventEmitter {
 	 * @param {object} [options] - Optional params for configuring the handler.
 	 * @returns {Promise}
 	 */
-	addFireAndForgetListener(routingKey, callback, options) {
+	addPublishListener(routingKey, callback, options) {
 		options = options || {};
 
 		return new Promise((resolve) => {
@@ -177,7 +177,7 @@ class PostmasterGeneral extends EventEmitter {
 	 * @param {string} routingKey - The routing key of the handler to remove.
 	 * @returns {Promise}
 	 */
-	removeFireAndForgetListener(routingKey) {
+	removePublishListener(routingKey) {
 		return new Promise((resolve) => {
 			if (!_.isString(routingKey)) {
 				throw new TypeError('"routingKey" should be a string.');
