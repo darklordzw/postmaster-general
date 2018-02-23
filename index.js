@@ -26,13 +26,6 @@ class PostmasterGeneral extends EventEmitter {
 
 		options = options || {};
 
-		if (!_.isUndefined(options.publishTransport) && !(options.publishTransport instanceof Transport)) {
-			throw new TypeError('"options.publishTransport" should be a Transport.');
-		}
-		if (!_.isUndefined(options.requestTransport) && !(options.requestTransport instanceof Transport)) {
-			throw new TypeError('"options.requestTransport" should be a Transport.');
-		}
-
 		this.transports = {};
 
 		if (options.publishTransport) {
