@@ -7,7 +7,6 @@
 
 const EventEmitter = require('events');
 const _ = require('lodash');
-const errors = require('postmaster-general-core').errors;
 const Transport = require('postmaster-general-core').Transport;
 
 /**
@@ -25,6 +24,13 @@ class PostmasterGeneral extends EventEmitter {
 		super();
 
 		options = options || {};
+
+		if (!_.isUndefined(options.publishTransport) && !(options.publishTransport instanceof Transport)) {
+			throw new TypeError('"options.publishTransport" should be a Transport.');
+		}
+		if (!_.isUndefined(options.requestTransport) && !(options.requestTransport instanceof Transport)) {
+			throw new TypeError('"options.requestTransport" should be a Transport.');
+		}
 
 		this.transports = {};
 
@@ -119,7 +125,7 @@ class PostmasterGeneral extends EventEmitter {
 			}
 			resolve();
 		})
-		.then(() => this.transports.request.addMessageListener(routingKey, callback, options));
+			.then(() => this.transports.request.addMessageListener(routingKey, callback, options));
 	}
 
 	/**
@@ -144,7 +150,7 @@ class PostmasterGeneral extends EventEmitter {
 			}
 			resolve();
 		})
-		.then(() => this.transports.publish.addMessageListener(routingKey, callback, options));
+			.then(() => this.transports.publish.addMessageListener(routingKey, callback, options));
 	}
 
 	/**
@@ -162,7 +168,7 @@ class PostmasterGeneral extends EventEmitter {
 			}
 			resolve();
 		})
-		.then(() => this.transports.request.removeMessageListener(routingKey));
+			.then(() => this.transports.request.removeMessageListener(routingKey));
 	}
 
 	/**
@@ -180,7 +186,7 @@ class PostmasterGeneral extends EventEmitter {
 			}
 			resolve();
 		})
-		.then(() => this.transports.publish.removeMessageListener(routingKey));
+			.then(() => this.transports.publish.removeMessageListener(routingKey));
 	}
 
 	/**
@@ -228,7 +234,7 @@ class PostmasterGeneral extends EventEmitter {
 			}
 			resolve();
 		})
-		.then(() => this.transports.publish.publish(routingKey, message, options));
+			.then(() => this.transports.publish.publish(routingKey, message, options));
 	}
 
 	/**
@@ -258,11 +264,10 @@ class PostmasterGeneral extends EventEmitter {
 			}
 			resolve();
 		})
-		.then(() => this.transports.request.request(routingKey, message, options));
+			.then(() => this.transports.request.request(routingKey, message, options));
 	}
 }
 
 module.exports = {
-	PostmasterGeneral,
-	errors
+	PostmasterGeneral
 };

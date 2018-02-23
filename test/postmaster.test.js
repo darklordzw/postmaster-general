@@ -6,7 +6,7 @@ const chai = require('chai');
 const dirtyChai = require('dirty-chai');
 const sinon = require('sinon');
 const Transport = require('postmaster-general-core').Transport;
-const PostmasterGeneral = require('../index').PostmasterGeneral;
+const PostmasterGeneral = require('..').PostmasterGeneral;
 
 /* This sets up the Chai assertion library. "should" and "expect"
 initialize their respective assertion properties. The "use()" functions

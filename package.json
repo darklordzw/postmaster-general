@@ -28,8 +28,10 @@
   },
   "dependencies": {
     "lodash": "^4.17.5",
-    "postmaster-general-core": "0.0.10",
     "uuid": "^3.2.1"
+  },
+  "peerDependencies": {
+    "postmaster-general-core": "^0.0.10"
   },
   "devDependencies": {
     "chai": "^4.1.2",
@@ -40,7 +42,7 @@
     "mocha": "^4.1.0",
     "nyc": "^11.5.0",
     "sinon": "^4.4.0",
-    "xo": "^0.18.2"
+    "xo": "^0.20.3"
   },
   "directories": {
     "test": "test"
