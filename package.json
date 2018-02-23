@@ -1,6 +1,6 @@
 {
   "name": "postmaster-general",
-  "version": "5.1.2",
+  "version": "5.1.3",
   "description": "A simple library for making microservice message calls over a variety of transports.",
   "author": "Ben Whatley",
   "repository": {
