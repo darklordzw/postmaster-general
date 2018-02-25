@@ -4,6 +4,7 @@
 
 const chai = require('chai');
 const dirtyChai = require('dirty-chai');
+const Promise = require('bluebird');
 const sinon = require('sinon');
 const Transport = require('postmaster-general-core').Transport;
 const PostmasterGeneral = require('..').PostmasterGeneral;

@@ -7,6 +7,7 @@
 
 const EventEmitter = require('events');
 const _ = require('lodash');
+const Promise = require('bluebird');
 const Transport = require('postmaster-general-core').Transport;
 
 /**
