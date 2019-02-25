@@ -8,7 +8,7 @@
 const EventEmitter = require('events');
 const _ = require('lodash');
 const Promise = require('bluebird');
-const Transport = require('postmaster-general-core').Transport;
+const { Transport } = require('postmaster-general-core');
 
 /**
  * The postmaster-general microservice messaging library.
@@ -218,7 +218,7 @@ class PostmasterGeneral extends EventEmitter {
 	 * @param {object} [options.initiator] - Optional marker used for identifying the user who generated the initial request.
 	 * @returns {Promise}
 	 */
-	publish(routingKey, message, options) { // eslint-disable-line no-unused-vars
+	publish(routingKey, message, options) {
 		return new Promise((resolve) => {
 			options = options || {};
 			if (!_.isString(routingKey)) {
@@ -248,7 +248,7 @@ class PostmasterGeneral extends EventEmitter {
 	 * @param {object} [options.initiator] - Optional marker used for identifying the user who generated the initial request.
 	 * @returns {Promise}
 	 */
-	request(routingKey, message, options) { // eslint-disable-line no-unused-vars
+	request(routingKey, message, options) {
 		return new Promise((resolve) => {
 			options = options || {};
 			if (!_.isString(routingKey)) {

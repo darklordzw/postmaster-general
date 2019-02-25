@@ -27,24 +27,24 @@
     "doc": "./node_modules/.bin/jsdoc -c ./jsdoc-conf.json -t ./node_modules/ink-docstrap/template -R README.md -d ./docs -r ."
   },
   "dependencies": {
-    "bluebird": "^3.5.1",
-    "lodash": "^4.17.5",
-    "uuid": "^3.2.1"
+    "bluebird": "^3.5.3",
+    "lodash": "^4.17.11",
+    "uuid": "^3.3.2"
   },
   "peerDependencies": {
-    "postmaster-general-core": "^0.0.12"
+    "postmaster-general-core": "^1.0.1"
   },
   "devDependencies": {
-    "chai": "^4.1.2",
-    "coveralls": "^3.0.0",
+    "chai": "^4.2.0",
+    "coveralls": "^3.0.3",
     "dirty-chai": "^2.0.1",
     "ink-docstrap": "^1.3.2",
     "jsdoc": "^3.5.5",
-    "mocha": "^4.1.0",
-    "nyc": "^11.5.0",
-    "postmaster-general-core": "0.0.12",
-    "sinon": "^4.4.2",
-    "xo": "^0.20.3"
+    "mocha": "^6.0.2",
+    "nyc": "^13.3.0",
+    "postmaster-general-core": "^1.0.1",
+    "sinon": "^7.2.4",
+    "xo": "^0.24.0"
   },
   "directories": {
     "test": "test"
@@ -73,7 +73,10 @@
         "always"
       ],
       "no-use-extend-native/no-use-extend-native": "off",
-      "unicorn/no-process-exit": "off"
+      "unicorn/no-process-exit": "off",
+      "unicorn/catch-error-name": "off",
+      "padding-line-between-statements": "off",
+      "valid-jsdoc": "off"
     }
   }
 }

@@ -6,15 +6,15 @@ const chai = require('chai');
 const dirtyChai = require('dirty-chai');
 const Promise = require('bluebird');
 const sinon = require('sinon');
-const Transport = require('postmaster-general-core').Transport;
-const PostmasterGeneral = require('..').PostmasterGeneral;
+const { Transport } = require('postmaster-general-core');
+const { PostmasterGeneral } = require('..');
 
 /* This sets up the Chai assertion library. "should" and "expect"
 initialize their respective assertion properties. The "use()" functions
 load plugins into Chai. "dirtyChai" just allows assertion properties to
 use function call syntax ("calledOnce()" vs "calledOnce"). It makes them more
 acceptable to the linter. */
-const expect = chai.expect;
+const { expect } = chai;
 chai.should();
 chai.use(dirtyChai);
 
